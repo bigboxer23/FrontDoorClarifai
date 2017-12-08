@@ -16,12 +16,20 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.activation.DataHandler;
+import javax.activation.FileDataSource;
+import javax.mail.*;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
 import java.util.List;
+import java.util.Properties;
 
 /**
  *
@@ -45,10 +53,16 @@ public class AnalysisController
 	private static final Logger myLogger = LoggerFactory.getLogger(AnalysisController.class);
 
 	@Value("${notificationUrl}")
-	private String kNotificationURL;
+	private String myNotificationURL;
 
 	@Value("${notificationEmail}")
-	private String myNotifcationEmail;
+	private String myNotificationEmail;
+
+	@Value("${sendingEmailAccount}")
+	private String mySendingEmailAccount;
+
+	@Value("${sendingEmailPassword}")
+	private String mySendingEmailPassword;
 
 	@RequestMapping("/analyze")
 	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze)
@@ -72,22 +86,22 @@ public class AnalysisController
 				myLogger.info(theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)));
 				if (aConcept.value() >= myThreshold)
 				{
-					sendMail(aFileToAnalyze.getAbsolutePath(), aConcept);
-					copyFile(aFileToAnalyze, new File(myRenameDirectory + "Success/", aFileToAnalyze.getName()));
+					sendNotification(aFileToAnalyze.getName(), aConcept);
+					sendGmail(moveFile(aFileToAnalyze, new File(myRenameDirectory + "Success/", aFileToAnalyze.getName())), aConcept);
 				} else
 				{
-					copyFile(aFileToAnalyze, new File(myRenameDirectory + "Failure/", aFileToAnalyze.getName()));
+					moveFile(aFileToAnalyze, new File(myRenameDirectory + "Failure/", aFileToAnalyze.getName()));
 				}
 			});
 		});
 		myLogger.info("Done " + theFileToAnalyze);
 	}
 
-	private File copyFile(File theFile, File theDestination)
+	private File moveFile(File theFile, File theDestination)
 	{
 		try
 		{
-			Files.copy(theFile.toPath(), theDestination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			Files.move(theFile.toPath(), theDestination.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 		catch (IOException theE)
 		{
@@ -96,29 +110,62 @@ public class AnalysisController
 		return theDestination;
 	}
 
-	private void sendMail(String theFileName, Concept theConcept)
+	private void sendNotification(String theFileName, Concept theConcept)
 	{
+		if (myNotificationURL == null)
+		{
+			myLogger.info("Notification null, not sending.");
+			return;
+		}
 		myLogger.info("Sending notification... " + theFileName);
 		try
 		{
-			HttpClientUtil.getSSLDisabledHttpClient().execute(new HttpGet(kNotificationURL));
+			HttpClientUtil.getSSLDisabledHttpClient().execute(new HttpGet(myNotificationURL));
 		}
 		catch (Throwable e)
 		{
-
+			myLogger.error("Error sending notification", e);
 		}
 		myLogger.info("Notification Sent " + theFileName);
+	}
+
+	private void sendGmail(File theFile, Concept theConcept)
+	{
+		if (mySendingEmailAccount == null || mySendingEmailPassword == null || myNotificationEmail == null)
+		{
+			myLogger.info("Not sending email, not configured");
+			return;
+		}
 		try
 		{
-			new ProcessBuilder("mail",
-					"-a", theFileName,
-					"-s", "Front Door Motion",
-					myNotifcationEmail
-					).start();
-		}
-		catch (IOException theE)
+			Message aMessage = new MimeMessage(getGmailSession());
+			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
+			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
+			aMessage.setSubject("Front Door Motion");
+			MimeBodyPart aMimeBodyPart = new MimeBodyPart();
+			aMimeBodyPart.setDataHandler(new DataHandler(new FileDataSource(theFile)));
+			aMimeBodyPart.setFileName(theFile.getName());
+			aMessage.setContent(new MimeMultipart(aMimeBodyPart));
+			Transport.send(aMessage);
+		} catch (MessagingException e)
 		{
-			myLogger.error("Error sending mail", theE);
+			myLogger.error("sendGmail:", e);
 		}
+	}
+
+	private Session getGmailSession()
+	{
+		Properties aProperties = new Properties();
+		aProperties.put("mail.smtp.auth", "true");
+		aProperties.put("mail.smtp.starttls.enable", "true");
+		aProperties.put("mail.smtp.host", "smtp.gmail.com");
+		aProperties.put("mail.smtp.port", "587");
+		return Session.getInstance(aProperties, new Authenticator()
+		{
+			protected PasswordAuthentication getPasswordAuthentication()
+			{
+				return new PasswordAuthentication(mySendingEmailAccount, mySendingEmailPassword);
+			}
+		});
 	}
 }
