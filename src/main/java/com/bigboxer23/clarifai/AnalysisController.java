@@ -6,6 +6,10 @@ import clarifai2.dto.input.ClarifaiInput;
 import clarifai2.dto.model.output.ClarifaiOutput;
 import clarifai2.dto.prediction.Concept;
 import clarifai2.dto.prediction.Prediction;
+import clarifai2.exception.ClarifaiException;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.bigboxer23.util.http.HttpClientUtil;
 import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
@@ -26,8 +30,9 @@ import javax.mail.internet.MimeMultipart;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 
@@ -64,8 +69,18 @@ public class AnalysisController
 	@Value("${sendingEmailPassword}")
 	private String mySendingEmailPassword;
 
+	@Value("${s3BucketName}")
+	private String myS3BucketName;
+
+	@Value("${s3Region}")
+	private String myS3Region;
+
+	private AmazonS3 myAmazonS3Client;
+
+	private ClarifaiClient myClarifaiClient;
+
 	@RequestMapping("/analyze")
-	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze)
+	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws InterruptedException
 	{
 		myLogger.info("Starting " + theFileToAnalyze);
 		File aFileToAnalyze = new File(theFileToAnalyze);
@@ -74,9 +89,26 @@ public class AnalysisController
 			myLogger.error(theFileToAnalyze + " does not exist.");
 			return;
 		}
-		ClarifaiClient aClient = new ClarifaiBuilder(myClarifaiAPIKey).buildSync();
-		List<ClarifaiOutput<Prediction>> aResults = aClient.predict(myModelId).
-				withInputs(ClarifaiInput.forImage(aFileToAnalyze)).
+		try
+		{
+			sendToClarifai(aFileToAnalyze);
+		} catch (ClarifaiException theException)
+		{
+			myLogger.error("Error sending to clarifai, trying again ", theException);
+			Thread.sleep(5000);
+			sendToClarifai(aFileToAnalyze);
+		}
+		myLogger.info("Done " + theFileToAnalyze);
+	}
+
+	private void sendToClarifai(File theFileToAnalyze)
+	{
+		if (myClarifaiClient == null)
+		{
+			myClarifaiClient = new ClarifaiBuilder(myClarifaiAPIKey).buildSync();
+		}
+		List<ClarifaiOutput<Prediction>> aResults = myClarifaiClient.predict(myModelId).
+				withInputs(ClarifaiInput.forImage(theFileToAnalyze)).
 				executeSync().get();
 		aResults.forEach(thePrediction ->
 		{
@@ -86,28 +118,51 @@ public class AnalysisController
 				myLogger.info(theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)));
 				if (aConcept.value() >= myThreshold)
 				{
-					sendNotification(aFileToAnalyze.getName(), aConcept);
-					sendGmail(moveFile(aFileToAnalyze, new File(myRenameDirectory + "Success/", aFileToAnalyze.getName())), aConcept);
+					sendNotification(theFileToAnalyze.getName(), aConcept);
+					sendGmail(theFileToAnalyze, aConcept);
+					moveToS3(theFileToAnalyze, "Success/");
+					deleteFile(theFileToAnalyze);
 				} else
 				{
-					moveFile(aFileToAnalyze, new File(myRenameDirectory + "Failure/", aFileToAnalyze.getName()));
+					moveToS3(theFileToAnalyze, "Failure/");
+					deleteFile(theFileToAnalyze);
 				}
 			});
 		});
-		myLogger.info("Done " + theFileToAnalyze);
 	}
 
-	private File moveFile(File theFile, File theDestination)
+	private void moveToS3(File theFile, String theDirectory)
+	{
+		myLogger.info("Moving " + theFile + " to S3.");
+		if (myAmazonS3Client == null)
+		{
+			myAmazonS3Client = AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
+		}
+		try
+		{
+			myAmazonS3Client.putObject(new PutObjectRequest(myS3BucketName, theDirectory + getDateString() + theFile.getName(), theFile));
+		} catch (Exception e)
+		{
+			myLogger.error("Problem sending to S3", e);
+			myAmazonS3Client = null;
+		}
+	}
+
+	private String getDateString()
+	{
+		return new SimpleDateFormat("yyyy-MM").format(new Date()) + "/";
+	}
+
+	private void deleteFile(File theFile)
 	{
 		try
 		{
-			Files.move(theFile.toPath(), theDestination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			Files.delete(theFile.toPath());
 		}
 		catch (IOException theE)
 		{
-			myLogger.error("copyFile:", theE);
+			myLogger.error("deleteFile:", theE);
 		}
-		return theDestination;
 	}
 
 	private void sendNotification(String theFileName, Concept theConcept)
