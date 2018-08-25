@@ -1,6 +1,5 @@
 package com.bigboxer23.util.http;
 
-import org.apache.http.conn.ClientConnectionManager;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
@@ -14,11 +13,6 @@ public class TimeoutEnabledHttpClient extends DefaultHttpClient
 	public TimeoutEnabledHttpClient()
 	{
 		super(getDefaultParams());
-	}
-
-	public TimeoutEnabledHttpClient(final ClientConnectionManager theConnectionManager)
-	{
-		super(theConnectionManager, getDefaultParams());
 	}
 
 	private static HttpParams getDefaultParams()

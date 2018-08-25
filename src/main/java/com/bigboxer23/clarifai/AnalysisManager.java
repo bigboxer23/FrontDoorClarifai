@@ -10,7 +10,7 @@ import clarifai2.exception.ClarifaiException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.bigboxer23.util.http.HttpClientUtil;
+import com.bigboxer23.util.http.InternalSSLHttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +75,8 @@ public class AnalysisManager
 
 	private Session myMailSession;
 
+	private InternalSSLHttpClient myHttpClient;
+
 	/**
 	 * send file to clarifai for analysis
 	 *
@@ -102,9 +104,11 @@ public class AnalysisManager
 					myLogger.info(theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)));
 					if (aConcept.value() >= myThreshold)
 					{
+						myLogger.info("Clarifai success " + theFileToAnalyze.getName());
 						theSuccess.accept(theFileToAnalyze);
 					} else
 					{
+						myLogger.info("Clarifai failure " + theFileToAnalyze.getName());
 						theFailure.accept(theFileToAnalyze);
 					}
 				});
@@ -170,14 +174,19 @@ public class AnalysisManager
 			myLogger.info("Notification null, not sending.");
 			return;
 		}
+		if (myHttpClient == null)
+		{
+			myHttpClient = new InternalSSLHttpClient();
+		}
 		myLogger.info("Sending notification... " + theFileName);
 		try
 		{
-			HttpClientUtil.getSSLDisabledHttpClient().execute(new HttpGet(myNotificationURL));
+			myHttpClient.execute(new HttpGet(myNotificationURL));
 		}
 		catch (Throwable e)
 		{
 			myLogger.error("Error sending notification", e);
+			myHttpClient = null;
 		}
 		myLogger.info("Notification Sent " + theFileName);
 	}
@@ -210,6 +219,7 @@ public class AnalysisManager
 				}
 			});
 		}
+		myLogger.info("Sending mail... " + theFiles.get(0));
 		try
 		{
 			Message aMessage = new MimeMessage(myMailSession);
