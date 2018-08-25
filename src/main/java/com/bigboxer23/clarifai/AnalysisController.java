@@ -34,6 +34,7 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 
 /**
@@ -92,7 +93,7 @@ public class AnalysisController
 		try
 		{
 			sendToClarifai(aFileToAnalyze);
-		} catch (ClarifaiException theException)
+		} catch (ClarifaiException | NoSuchElementException theException)
 		{
 			myLogger.error("Error sending to clarifai, trying again ", theException);
 			Thread.sleep(5000);
