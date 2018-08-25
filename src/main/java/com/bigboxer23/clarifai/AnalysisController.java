@@ -1,85 +1,53 @@
 package com.bigboxer23.clarifai;
 
-import clarifai2.api.ClarifaiBuilder;
-import clarifai2.api.ClarifaiClient;
-import clarifai2.dto.input.ClarifaiInput;
-import clarifai2.dto.model.output.ClarifaiOutput;
-import clarifai2.dto.prediction.Concept;
-import clarifai2.dto.prediction.Prediction;
-import clarifai2.exception.ClarifaiException;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.bigboxer23.util.http.HttpClientUtil;
-import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.activation.DataHandler;
-import javax.activation.FileDataSource;
-import javax.mail.*;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Properties;
+import java.util.*;
 
 /**
- *
+ * Controller to manage the HTTP requests coming in for analysis
  */
 @RestController
 @EnableAutoConfiguration
 public class AnalysisController
 {
-	@Value("${APIKey}")
-	private String myClarifaiAPIKey;
-
-	@Value("${modelId}")
-	private String myModelId;
-
-	@Value("${threshold}")
-	private double myThreshold = .75;
-
-	@Value("${renameDirectory}")
-	private String myRenameDirectory;
-
 	private static final Logger myLogger = LoggerFactory.getLogger(AnalysisController.class);
 
-	@Value("${notificationUrl}")
-	private String myNotificationURL;
+	private Timer myBatchTimer = new Timer();
 
-	@Value("${notificationEmail}")
-	private String myNotificationEmail;
+	private AnalysisManager myAnalysisManager;
 
-	@Value("${sendingEmailAccount}")
-	private String mySendingEmailAccount;
+	private List<File> myBatchedFiles = new ArrayList<>();
 
-	@Value("${sendingEmailPassword}")
-	private String mySendingEmailPassword;
+	/**
+	 * After a successful call, time until we'd immediately send another notification, otherwise we'll start collecting
+	 * images to batch into a single notification
+	 */
+	@Value("${successThreshold}")
+	private long mySuccessThreshhold;
 
-	@Value("${s3BucketName}")
-	private String myS3BucketName;
+	private long myLastSuccessfulCall = -1;
 
-	@Value("${s3Region}")
-	private String myS3Region;
+	@Autowired
+	public void setAnalysisManager(AnalysisManager theAnalysisManager)
+	{
+		myAnalysisManager = theAnalysisManager;
+	}
 
-	private AmazonS3 myAmazonS3Client;
-
-	private ClarifaiClient myClarifaiClient;
-
+	/**
+	 * Parse the file out of the request URL, send to clarifai to determine what we should do with them
+	 *
+	 * @param theFileToAnalyze
+	 * @throws InterruptedException
+	 */
 	@RequestMapping("/analyze")
 	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws InterruptedException
 	{
@@ -90,138 +58,35 @@ public class AnalysisController
 			myLogger.error(theFileToAnalyze + " does not exist.");
 			return;
 		}
-		try
+		myAnalysisManager.sendToClarifai(aFileToAnalyze, theSuccessFile ->
 		{
-			sendToClarifai(aFileToAnalyze);
-		} catch (ClarifaiException | NoSuchElementException theException)
+			myBatchedFiles.add(theSuccessFile);
+			if (myLastSuccessfulCall + mySuccessThreshhold < System.currentTimeMillis())
+			{
+				myLastSuccessfulCall = System.currentTimeMillis();
+				getTask().run();
+				return;
+			}
+			myLogger.info("Adding " + theSuccessFile.getName() + " to batch notification.");
+			myBatchTimer.cancel();
+			myBatchTimer = new Timer();
+			myLastSuccessfulCall = System.currentTimeMillis();
+			myBatchTimer.schedule(getTask(), mySuccessThreshhold);
+		}, theFailureFile ->
 		{
-			myLogger.error("Error sending to clarifai, trying again ", theException);
-			Thread.sleep(5000);
-			sendToClarifai(aFileToAnalyze);
-		}
+			myAnalysisManager.moveToS3(theFailureFile, "Failure/");
+			myAnalysisManager.deleteFile(theFailureFile);
+		});
 		myLogger.info("Done " + theFileToAnalyze);
 	}
 
-	private void sendToClarifai(File theFileToAnalyze)
+	private SuccessTask getTask()
 	{
-		if (myClarifaiClient == null)
-		{
-			myClarifaiClient = new ClarifaiBuilder(myClarifaiAPIKey).buildSync();
-		}
-		List<ClarifaiOutput<Prediction>> aResults = myClarifaiClient.predict(myModelId).
-				withInputs(ClarifaiInput.forImage(theFileToAnalyze)).
-				executeSync().get();
-		aResults.forEach(thePrediction ->
-		{
-			thePrediction.data().forEach(theValue ->
-			{
-				Concept aConcept = theValue.asConcept();
-				myLogger.info(theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)));
-				if (aConcept.value() >= myThreshold)
-				{
-					sendNotification(theFileToAnalyze.getName(), aConcept);
-					sendGmail(theFileToAnalyze, aConcept);
-					moveToS3(theFileToAnalyze, "Success/");
-					deleteFile(theFileToAnalyze);
-				} else
-				{
-					moveToS3(theFileToAnalyze, "Failure/");
-					deleteFile(theFileToAnalyze);
-				}
-			});
-		});
+		return new SuccessTask(Collections.unmodifiableList(myBatchedFiles), myAnalysisManager, this);
 	}
 
-	private void moveToS3(File theFile, String theDirectory)
+	public void clearBatchedFiles()
 	{
-		myLogger.info("Moving " + theFile + " to S3.");
-		if (myAmazonS3Client == null)
-		{
-			myAmazonS3Client = AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
-		}
-		try
-		{
-			myAmazonS3Client.putObject(new PutObjectRequest(myS3BucketName, theDirectory + getDateString() + theFile.getName(), theFile));
-		} catch (Exception e)
-		{
-			myLogger.error("Problem sending to S3", e);
-			myAmazonS3Client = null;
-		}
-	}
-
-	private String getDateString()
-	{
-		return new SimpleDateFormat("yyyy-MM").format(new Date()) + "/";
-	}
-
-	private void deleteFile(File theFile)
-	{
-		try
-		{
-			Files.delete(theFile.toPath());
-		}
-		catch (IOException theE)
-		{
-			myLogger.error("deleteFile:", theE);
-		}
-	}
-
-	private void sendNotification(String theFileName, Concept theConcept)
-	{
-		if (myNotificationURL == null)
-		{
-			myLogger.info("Notification null, not sending.");
-			return;
-		}
-		myLogger.info("Sending notification... " + theFileName);
-		try
-		{
-			HttpClientUtil.getSSLDisabledHttpClient().execute(new HttpGet(myNotificationURL));
-		}
-		catch (Throwable e)
-		{
-			myLogger.error("Error sending notification", e);
-		}
-		myLogger.info("Notification Sent " + theFileName);
-	}
-
-	private void sendGmail(File theFile, Concept theConcept)
-	{
-		if (mySendingEmailAccount == null || mySendingEmailPassword == null || myNotificationEmail == null)
-		{
-			myLogger.info("Not sending email, not configured");
-			return;
-		}
-		try
-		{
-			Message aMessage = new MimeMessage(getGmailSession());
-			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
-			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
-			aMessage.setSubject("Front Door Motion");
-			MimeBodyPart aMimeBodyPart = new MimeBodyPart();
-			aMimeBodyPart.setDataHandler(new DataHandler(new FileDataSource(theFile)));
-			aMimeBodyPart.setFileName(theFile.getName());
-			aMessage.setContent(new MimeMultipart(aMimeBodyPart));
-			Transport.send(aMessage);
-		} catch (MessagingException e)
-		{
-			myLogger.error("sendGmail:", e);
-		}
-	}
-
-	private Session getGmailSession()
-	{
-		Properties aProperties = new Properties();
-		aProperties.put("mail.smtp.auth", "true");
-		aProperties.put("mail.smtp.starttls.enable", "true");
-		aProperties.put("mail.smtp.host", "smtp.gmail.com");
-		aProperties.put("mail.smtp.port", "587");
-		return Session.getInstance(aProperties, new Authenticator()
-		{
-			protected PasswordAuthentication getPasswordAuthentication()
-			{
-				return new PasswordAuthentication(mySendingEmailAccount, mySendingEmailPassword);
-			}
-		});
+		myBatchedFiles.clear();
 	}
 }

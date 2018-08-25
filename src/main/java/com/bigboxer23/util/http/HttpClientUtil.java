@@ -15,9 +15,15 @@ import java.security.cert.X509Certificate;
  */
 public class HttpClientUtil extends TimeoutEnabledHttpClient
 {
+	private static DefaultHttpClient myClient;
+
 	public static DefaultHttpClient getSSLDisabledHttpClient()
 	{
-		TimeoutEnabledHttpClient anInstance = new TimeoutEnabledHttpClient();
+		if (myClient != null)
+		{
+			return myClient;
+		}
+		myClient = new TimeoutEnabledHttpClient();
 		try
 			{
 				SSLContext anSSLContext = SSLContext.getInstance("SSL");
@@ -43,13 +49,13 @@ public class HttpClientUtil extends TimeoutEnabledHttpClient
 				HttpsURLConnection.setDefaultSSLSocketFactory(anSSLContext.getSocketFactory());
 				SSLSocketFactory anSSLSockFactory = new SSLSocketFactory(anSSLContext);
 				anSSLSockFactory.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-				ClientConnectionManager aClientConnectionManager = anInstance.getConnectionManager();
+				ClientConnectionManager aClientConnectionManager = myClient.getConnectionManager();
 				SchemeRegistry aSchemeRegistry = aClientConnectionManager.getSchemeRegistry();
 				aSchemeRegistry.register(new Scheme("https", anSSLSockFactory, 443));
 				return new TimeoutEnabledHttpClient(aClientConnectionManager);
 			} catch (Exception ex)
 			{
 			}
-		return anInstance;
+		return myClient;
 	}
 }
