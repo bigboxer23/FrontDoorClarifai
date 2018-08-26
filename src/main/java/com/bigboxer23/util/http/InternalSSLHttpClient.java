@@ -41,7 +41,7 @@ public class InternalSSLHttpClient extends TimeoutEnabledHttpClient
 			HttpsURLConnection.setDefaultSSLSocketFactory(anSSLContext.getSocketFactory());
 			org.apache.http.conn.ssl.SSLSocketFactory anSSLSockFactory = new org.apache.http.conn.ssl.SSLSocketFactory(anSSLContext);
 			anSSLSockFactory.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-			ClientConnectionManager aClientConnectionManager = super.getConnectionManager();
+			ClientConnectionManager aClientConnectionManager = super.createClientConnectionManager();
 			SchemeRegistry aSchemeRegistry = aClientConnectionManager.getSchemeRegistry();
 			aSchemeRegistry.register(new Scheme("https", anSSLSockFactory, 443));
 			return aClientConnectionManager;
