@@ -101,7 +101,7 @@ public class AnalysisManager
 				thePrediction.data().forEach(theValue ->
 				{
 					Concept aConcept = theValue.asConcept();
-					myLogger.info(theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)));
+					myLogger.info("Clarifai analysis: " + theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)) + "%");
 					if (aConcept.value() >= myThreshold)
 					{
 						myLogger.info("Clarifai success " + theFileToAnalyze.getName());
