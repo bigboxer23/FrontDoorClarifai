@@ -10,7 +10,7 @@ import clarifai2.exception.ClarifaiException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.bigboxer23.util.http.InternalSSLHttpClient;
+import com.bigboxer23.util.http.HttpClientUtils;
 import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,8 +74,6 @@ public class AnalysisManager
 	private ClarifaiClient myClarifaiClient;
 
 	private Session myMailSession;
-
-	private InternalSSLHttpClient myHttpClient;
 
 	/**
 	 * send file to clarifai for analysis
@@ -174,19 +172,15 @@ public class AnalysisManager
 			myLogger.info("Notification null, not sending.");
 			return;
 		}
-		if (myHttpClient == null)
-		{
-			myHttpClient = new InternalSSLHttpClient();
-		}
 		myLogger.info("Sending notification... " + theFileName);
 		try
 		{
-			myHttpClient.execute(new HttpGet(myNotificationURL));
+			HttpClientUtils.getInstance().execute(new HttpGet(myNotificationURL));
 		}
 		catch (Throwable e)
 		{
 			myLogger.error("Error sending notification", e);
-			myHttpClient = null;
+			HttpClientUtils.reset();
 		}
 		myLogger.info("Notification Sent " + theFileName);
 	}
