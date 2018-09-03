@@ -64,14 +64,14 @@ public class AnalysisController
 			if (myLastSuccessfulCall + mySuccessThreshhold < System.currentTimeMillis())
 			{
 				myLastSuccessfulCall = System.currentTimeMillis();
-				getTask().run();
+				getTask(true).run();
 				return;
 			}
 			myLogger.info("Adding " + theSuccessFile.getName() + " to batch notification.");
 			myBatchTimer.cancel();
 			myBatchTimer = new Timer();
 			myLastSuccessfulCall = System.currentTimeMillis();
-			myBatchTimer.schedule(getTask(), mySuccessThreshhold);
+			myBatchTimer.schedule(getTask(false), mySuccessThreshhold);
 		}, theFailureFile ->
 		{
 			myAnalysisManager.moveToS3(theFailureFile, "Failure/");
@@ -80,9 +80,9 @@ public class AnalysisController
 		myLogger.info("Done " + theFileToAnalyze);
 	}
 
-	private SuccessTask getTask()
+	private SuccessTask getTask(boolean theFireNotification)
 	{
-		return new SuccessTask(Collections.unmodifiableList(myBatchedFiles), myAnalysisManager, this);
+		return new SuccessTask(Collections.unmodifiableList(myBatchedFiles), theFireNotification, myAnalysisManager, this);
 	}
 
 	public void clearBatchedFiles()

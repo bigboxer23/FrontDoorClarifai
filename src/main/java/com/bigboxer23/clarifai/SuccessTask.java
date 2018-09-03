@@ -13,13 +13,16 @@ public class SuccessTask extends TimerTask
 
 	private AnalysisController myAnalysisController;
 
+	private boolean myFireNotification;
+
 	private List<File> myFiles;
 
-	public SuccessTask(List<File> theFiles, AnalysisManager theAnalysisManager, AnalysisController theController)
+	public SuccessTask(List<File> theFiles, boolean theFireNotification, AnalysisManager theAnalysisManager, AnalysisController theController)
 	{
 		myAnalysisManager = theAnalysisManager;
 		myFiles = theFiles;
 		myAnalysisController = theController;
+		myFireNotification = theFireNotification;
 	}
 
 	@Override
@@ -28,7 +31,10 @@ public class SuccessTask extends TimerTask
 		myAnalysisManager.sendGmail(myFiles);
 		myFiles.forEach(theFile ->
 		{
-			myAnalysisManager.sendNotification(theFile.getName());
+			if (myFireNotification)
+			{
+				myAnalysisManager.sendNotification(theFile.getName());
+			}
 			myAnalysisManager.moveToS3(theFile, "Success/");
 			myAnalysisManager.deleteFile(theFile);
 		});
