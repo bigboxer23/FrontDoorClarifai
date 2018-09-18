@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Controller to manage the HTTP requests coming in for analysis
@@ -21,11 +25,13 @@ public class AnalysisController
 {
 	private static final Logger myLogger = LoggerFactory.getLogger(AnalysisController.class);
 
-	private Timer myBatchTimer = new Timer();
+	private ScheduledFuture myTask;
 
 	private AnalysisManager myAnalysisManager;
 
 	private List<File> myBatchedFiles = new ArrayList<>();
+
+	private ScheduledExecutorService myExecutorService = Executors.newSingleThreadScheduledExecutor();
 
 	/**
 	 * After a successful call, time until we'd immediately send another notification, otherwise we'll start collecting
@@ -68,10 +74,12 @@ public class AnalysisController
 				return;
 			}
 			myLogger.info("Adding " + theSuccessFile.getName() + " to batch notification.");
-			myBatchTimer.cancel();
-			myBatchTimer = new Timer();
+			if (myTask != null)
+			{
+				myTask.cancel(true);
+			}
 			myLastSuccessfulCall = System.currentTimeMillis();
-			myBatchTimer.schedule(getTask(false), mySuccessThreshhold);
+			myTask = myExecutorService.schedule(getTask(false), mySuccessThreshhold, TimeUnit.MINUTES);
 		}, theFailureFile ->
 		{
 			myAnalysisManager.moveToS3(theFailureFile, "Failure/");
