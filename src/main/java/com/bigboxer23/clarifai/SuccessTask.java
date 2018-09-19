@@ -2,12 +2,11 @@ package com.bigboxer23.clarifai;
 
 import java.io.File;
 import java.util.List;
-import java.util.TimerTask;
 
 /**
  * Task to run on getting a successful image from clarifai
  */
-public class SuccessTask extends TimerTask
+public class SuccessTask implements Runnable
 {
 	private AnalysisManager myAnalysisManager;
 

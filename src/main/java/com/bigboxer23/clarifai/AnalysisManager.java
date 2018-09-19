@@ -173,15 +173,7 @@ public class AnalysisManager
 			return;
 		}
 		myLogger.info("Sending notification... " + theFileName);
-		try
-		{
-			HttpClientUtils.getInstance().execute(new HttpGet(myNotificationURL));
-		}
-		catch (Throwable e)
-		{
-			myLogger.error("Error sending notification", e);
-			HttpClientUtils.reset();
-		}
+		HttpClientUtils.execute(new HttpGet(myNotificationURL));
 		myLogger.info("Notification Sent " + theFileName);
 	}
 

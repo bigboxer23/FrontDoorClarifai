@@ -1,6 +1,10 @@
 package com.bigboxer23.util.http;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.ByteStreams;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -25,10 +29,24 @@ public class HttpClientUtils
 
 	private static CloseableHttpClient myHttpClient;
 
+	public static String execute(HttpRequestBase theRequestBase)
+	{
+		try
+		{
+			CloseableHttpResponse aResponse = HttpClientUtils.getInstance().execute(theRequestBase);
+			return new String(ByteStreams.toByteArray(aResponse.getEntity().getContent()), Charsets.UTF_8);
+		}
+		catch (IOException e)
+		{
+			HttpClientUtils.reset();
+			myLogger.error("HttpClientUtils:", e);
+		}
+		return null;
+	}
 	/**
 	 * Remove the cached client
 	 */
-	public static void reset()
+	private static void reset()
 	{
 		try
 		{
@@ -47,7 +65,7 @@ public class HttpClientUtils
 	 *
 	 * @return
 	 */
-	public static CloseableHttpClient getInstance()
+	private static CloseableHttpClient getInstance()
 	{
 		if (myHttpClient != null)
 		{
