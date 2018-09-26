@@ -29,6 +29,51 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<id>scp-to-remote</id>
+						<phase>package</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<scp file="${project.basedir}/target/Clarifai-1.0.jar"
+								     todir="pi@frontdoor:/home/pi/com/jones/matt/Clarifai/1.0"
+								     keyfile="${user.home}/.ssh/id_rsa"
+								     passphrase=""
+								     trust="true"/>
+								<sshexec host="frontdoor"
+								         username="pi"
+								         keyfile="${user.home}/.ssh/id_rsa"
+								         command="sudo pkill -f 'java.*Clarifai*'"
+								         trust="true"/>
+								<sshexec host="frontdoor"
+								         username="pi"
+								         keyfile="${user.home}/.ssh/id_rsa"
+								         command="cd /home/pi/ ; nohup sudo nohup java -Xmx1024m -jar /home/pi/com/jones/matt/Clarifai/1.0/Clarifai-1.0.jar &amp;"
+								         trust="true"/>
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>com.jcraft</groupId>
+						<artifactId>jsch</artifactId>
+						<version>0.1.54</version>
+					</dependency>
+					<dependency>
+						<groupId>ant</groupId>
+						<artifactId>ant-jsch</artifactId>
+						<version>1.6.5</version>
+					</dependency>
+				</dependencies>
+			</plugin>
 		</plugins>
 		<extensions>
 			<!-- Enabling the use of SSH -->
@@ -99,10 +144,4 @@
 			<version>1.6.0</version>
 		</dependency>
 	</dependencies>
-	<distributionManagement>
-		<repository>
-			<id>Clarifai</id>
-			<url>scp://pi@192.168.0.11:/home/pi</url>
-		</repository>
-	</distributionManagement>
 </project>

@@ -27,13 +27,13 @@ public class SuccessTask implements Runnable
 	@Override
 	public void run()
 	{
+		if (myFireNotification)
+		{
+			myAnalysisManager.sendNotification();
+		}
 		myAnalysisManager.sendGmail(myFiles);
 		myFiles.forEach(theFile ->
 		{
-			if (myFireNotification)
-			{
-				myAnalysisManager.sendNotification(theFile.getName());
-			}
 			myAnalysisManager.moveToS3(theFile, "Success/");
 			myAnalysisManager.deleteFile(theFile);
 		});

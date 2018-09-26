@@ -165,16 +165,16 @@ public class AnalysisManager
 	 *
 	 * @param theFileName
 	 */
-	public void sendNotification(String theFileName)
+	public void sendNotification()
 	{
 		if (myNotificationURL == null)
 		{
 			myLogger.info("Notification null, not sending.");
 			return;
 		}
-		myLogger.info("Sending notification... " + theFileName);
+		myLogger.info("Sending notification... ");
 		HttpClientUtils.execute(new HttpGet(myNotificationURL));
-		myLogger.info("Notification Sent " + theFileName);
+		myLogger.info("Notification Sent ");
 	}
 
 	/**
