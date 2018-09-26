@@ -67,7 +67,7 @@ public class AnalysisController
 		myAnalysisManager.sendToClarifai(aFileToAnalyze, theSuccessFile ->
 		{
 			myBatchedFiles.add(theSuccessFile);
-			if (myLastSuccessfulCall + mySuccessThreshhold < System.currentTimeMillis())
+			if (myLastSuccessfulCall + (mySuccessThreshhold * 60 * 1000) < System.currentTimeMillis())
 			{
 				myLastSuccessfulCall = System.currentTimeMillis();
 				getTask(true).run();
