@@ -75,6 +75,11 @@ public class AnalysisManager
 
 	private Session myMailSession;
 
+	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws InterruptedException
+	{
+		sendToClarifai(theFileToAnalyze, theSuccess, theFailure, true);
+	}
+
 	/**
 	 * send file to clarifai for analysis
 	 *
@@ -83,7 +88,7 @@ public class AnalysisManager
 	 * @param theFailure method to call if clarifai says the image is not noteworthy
 	 * @throws InterruptedException
 	 */
-	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws InterruptedException
+	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure, boolean theTryAgain) throws InterruptedException
 	{
 		if (myClarifaiClient == null)
 		{
@@ -113,10 +118,13 @@ public class AnalysisManager
 			});
 		} catch (ClarifaiException | NoSuchElementException theException)
 		{
-			myLogger.error("Error sending to clarifai, trying again ", theException);
-			myClarifaiClient = null;
-			Thread.sleep(5000);
-			sendToClarifai(theFileToAnalyze, theSuccess, theFailure);
+			myLogger.error("Error sending to clarifai, trying again " + theTryAgain, theException);
+			if (theTryAgain)
+			{
+				myClarifaiClient = null;
+				Thread.sleep(5000);
+				sendToClarifai(theFileToAnalyze, theSuccess, theFailure, false);
+			}
 		}
 	}
 
