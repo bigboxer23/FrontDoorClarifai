@@ -1,16 +1,15 @@
 package com.bigboxer23.clarifai;
 
-import clarifai2.api.ClarifaiBuilder;
-import clarifai2.api.ClarifaiClient;
-import clarifai2.dto.input.ClarifaiInput;
-import clarifai2.dto.model.output.ClarifaiOutput;
-import clarifai2.dto.prediction.Concept;
-import clarifai2.dto.prediction.Prediction;
-import clarifai2.exception.ClarifaiException;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.bigboxer23.util.http.HttpClientUtils;
+import com.clarifai.channel.ClarifaiChannel;
+import com.clarifai.credentials.ClarifaiCallCredentials;
+import com.clarifai.grpc.api.*;
+import com.clarifai.grpc.api.status.StatusCode;
+import com.google.protobuf.ByteString;
+import io.grpc.Channel;
 import org.apache.http.client.methods.HttpGet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,14 +70,9 @@ public class AnalysisManager
 
 	private AmazonS3 myAmazonS3Client;
 
-	private ClarifaiClient myClarifaiClient;
+	private Channel myChannel;
 
 	private Session myMailSession;
-
-	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws InterruptedException
-	{
-		sendToClarifai(theFileToAnalyze, theSuccess, theFailure, true);
-	}
 
 	/**
 	 * send file to clarifai for analysis
@@ -88,42 +82,46 @@ public class AnalysisManager
 	 * @param theFailure method to call if clarifai says the image is not noteworthy
 	 * @throws InterruptedException
 	 */
-	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure, boolean theTryAgain) throws InterruptedException
+	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws IOException
 	{
-		if (myClarifaiClient == null)
+		if (myChannel == null)
 		{
-			myClarifaiClient = new ClarifaiBuilder(myClarifaiAPIKey).buildSync();
+			myChannel = ClarifaiChannel.INSTANCE.getInsecureGrpcChannel();
 		}
-		try
-		{
-			List<ClarifaiOutput<Prediction>> aResults = myClarifaiClient.predict(myModelId).
-					withInputs(ClarifaiInput.forImage(theFileToAnalyze)).
-					executeSync().get();
-			aResults.forEach(thePrediction ->
+
+		V2Grpc.V2BlockingStub aStub = V2Grpc.newBlockingStub(myChannel)
+				.withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
+
+		MultiOutputResponse aResponse = aStub.postModelOutputs(
+				PostModelOutputsRequest.newBuilder()
+						.setModelId(myModelId)
+						.addInputs(
+								Input.newBuilder().setData(
+										Data.newBuilder().setImage(
+												Image.newBuilder()
+														.setBase64(ByteString.copyFrom(Files.readAllBytes(
+																theFileToAnalyze.toPath()
+														)))
+										)
+								)
+						)
+						.build()
+		);
+
+		if (aResponse.getStatus().getCode() != StatusCode.SUCCESS) {
+			throw new RuntimeException("Request failed, status: " + aResponse.getStatus());
+		}
+
+		for (Concept aConcept : aResponse.getOutputs(0).getData().getConceptsList()) {
+			myLogger.info("Clarifai analysis: " + theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.getValue() * 100)) + "%");
+			if (aConcept.getValue() >= myThreshold)
 			{
-				thePrediction.data().forEach(theValue ->
-				{
-					Concept aConcept = theValue.asConcept();
-					myLogger.info("Clarifai analysis: " + theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.value() * 100)) + "%");
-					if (aConcept.value() >= myThreshold)
-					{
-						myLogger.info("Clarifai success " + theFileToAnalyze.getName());
-						theSuccess.accept(theFileToAnalyze);
-					} else
-					{
-						myLogger.info("Clarifai failure " + theFileToAnalyze.getName());
-						theFailure.accept(theFileToAnalyze);
-					}
-				});
-			});
-		} catch (ClarifaiException | NoSuchElementException theException)
-		{
-			myLogger.error("Error sending to clarifai, trying again " + theTryAgain, theException);
-			if (theTryAgain)
+				myLogger.info("Clarifai success " + theFileToAnalyze.getName());
+				theSuccess.accept(theFileToAnalyze);
+			} else
 			{
-				myClarifaiClient = null;
-				Thread.sleep(5000);
-				sendToClarifai(theFileToAnalyze, theSuccess, theFailure, false);
+				myLogger.info("Clarifai failure " + theFileToAnalyze.getName());
+				theFailure.accept(theFileToAnalyze);
 			}
 		}
 	}

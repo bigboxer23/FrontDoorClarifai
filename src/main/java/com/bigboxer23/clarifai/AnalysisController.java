@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -55,7 +56,7 @@ public class AnalysisController
 	 * @throws InterruptedException
 	 */
 	@RequestMapping("/analyze")
-	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws InterruptedException
+	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws IOException
 	{
 		myLogger.info("Starting " + theFileToAnalyze);
 		File aFileToAnalyze = new File(theFileToAnalyze);
