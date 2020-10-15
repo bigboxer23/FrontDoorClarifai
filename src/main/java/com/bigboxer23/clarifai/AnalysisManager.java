@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.activation.DataHandler;
@@ -30,6 +31,7 @@ import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -74,6 +76,15 @@ public class AnalysisManager
 
 	private Session myMailSession;
 
+	private AtomicInteger myMonthlyAPICount = new AtomicInteger(0);
+
+	@Scheduled(cron="0 0 0 1 1/1 *")//Run first of month at 12am
+	private void resetMonthlyCounter()
+	{
+		myLogger.info("Resetting monthly API count");
+		myMonthlyAPICount.set(0);
+	}
+
 	/**
 	 * send file to clarifai for analysis
 	 *
@@ -91,7 +102,7 @@ public class AnalysisManager
 
 		V2Grpc.V2BlockingStub aStub = V2Grpc.newBlockingStub(myChannel)
 				.withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
-
+		myMonthlyAPICount.incrementAndGet();
 		MultiOutputResponse aResponse = aStub.postModelOutputs(
 				PostModelOutputsRequest.newBuilder()
 						.setModelId(myModelId)
@@ -217,7 +228,7 @@ public class AnalysisManager
 			Message aMessage = new MimeMessage(myMailSession);
 			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
 			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
-			aMessage.setSubject("Front Door Motion");
+			aMessage.setSubject("Front Door Motion " + myMonthlyAPICount.intValue());
 			List<MimeBodyPart> aFiles = new ArrayList<>();
 			for (File aFile : theFiles)
 			{
