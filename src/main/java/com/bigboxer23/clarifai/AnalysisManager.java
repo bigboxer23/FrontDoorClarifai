@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -41,6 +42,8 @@ import java.util.function.Consumer;
 @EnableAutoConfiguration
 public class AnalysisManager
 {
+	private static final int kMaxApiLimit = 5000;
+
 	private static final Logger myLogger = LoggerFactory.getLogger(AnalysisController.class);
 
 	@Value("${notificationEmail}")
@@ -86,6 +89,19 @@ public class AnalysisManager
 	}
 
 	/**
+	 * Since we have a finite number of free calls, limit ourselves by available number based on number per day
+	 *
+	 * @return true if we've hit limit and shouldn't allow running
+	 */
+	private boolean shouldLimitCall()
+	{
+		LocalDate aDate = LocalDate.now();
+		int aDayCount = aDate.withDayOfMonth(aDate.getMonth().length(aDate.isLeapYear())).getDayOfMonth();
+		int aMaxPerDays = aDate.getDayOfMonth() * (kMaxApiLimit / aDayCount);
+		return myMonthlyAPICount.get() > aMaxPerDays;
+	}
+
+	/**
 	 * send file to clarifai for analysis
 	 *
 	 * @param theFileToAnalyze the file to send
@@ -95,6 +111,11 @@ public class AnalysisManager
 	 */
 	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws IOException
 	{
+		if (shouldLimitCall())
+		{
+			myLogger.warn("Monthly Clarifai API limit has been hit " + myMonthlyAPICount.get());
+			return;
+		}
 		if (myChannel == null)
 		{
 			myChannel = ClarifaiChannel.INSTANCE.getInsecureGrpcChannel();
