@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.activation.DataHandler;
 import javax.activation.FileDataSource;
+import javax.annotation.PostConstruct;
 import javax.mail.*;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
@@ -88,6 +89,13 @@ public class AnalysisManager
 		myMonthlyAPICount.set(0);
 	}
 
+	private int getMaxApiLimitByDayOfMonth(int theDayOfMonth)
+	{
+		LocalDate aDate = LocalDate.now();
+		int aDayCount = aDate.withDayOfMonth(aDate.getMonth().length(aDate.isLeapYear())).getDayOfMonth();
+		return theDayOfMonth * (kMaxApiLimit / aDayCount);
+	}
+
 	/**
 	 * Since we have a finite number of free calls, limit ourselves by available number based on number per day
 	 *
@@ -95,10 +103,15 @@ public class AnalysisManager
 	 */
 	private boolean shouldLimitCall()
 	{
-		LocalDate aDate = LocalDate.now();
-		int aDayCount = aDate.withDayOfMonth(aDate.getMonth().length(aDate.isLeapYear())).getDayOfMonth();
-		int aMaxPerDays = aDate.getDayOfMonth() * (kMaxApiLimit / aDayCount);
-		return myMonthlyAPICount.get() > aMaxPerDays;
+		return myMonthlyAPICount.get() > getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth());
+	}
+
+	@PostConstruct
+	private void initCounter()
+	{
+		int aMaxCount = getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth() - 1);
+		myMonthlyAPICount.set(aMaxCount);
+		myLogger.warn("Initializing to " + aMaxCount);
 	}
 
 	/**
