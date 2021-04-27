@@ -5,9 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,6 +41,8 @@ public class AnalysisController
 
 	private long myLastSuccessfulCall = -1;
 
+	private long myIsPaused = -1;
+
 	@Autowired
 	public void setAnalysisManager(AnalysisManager theAnalysisManager)
 	{
@@ -58,6 +58,11 @@ public class AnalysisController
 	@RequestMapping("/analyze")
 	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws IOException
 	{
+		if (myIsPaused > System.currentTimeMillis())
+		{
+			myLogger.info("Paused, not running" + theFileToAnalyze);
+			return;
+		}
 		myLogger.info("Starting " + theFileToAnalyze);
 		File aFileToAnalyze = new File(theFileToAnalyze);
 		if (!aFileToAnalyze.exists())
@@ -87,6 +92,27 @@ public class AnalysisController
 			myAnalysisManager.deleteFile(theFailureFile);
 		});
 		myLogger.info("Done " + theFileToAnalyze);
+	}
+
+	@GetMapping(path = "/pause/{delay}", produces = "application/json;charset=UTF-8")
+	public long pause(@PathVariable(value = "delay") Long theDelay)
+	{
+		myIsPaused = System.currentTimeMillis() + theDelay * 1000;
+		myLogger.info("Pausing for " + theDelay + " seconds");
+		return isPaused();
+	}
+
+	@GetMapping(path = "/isPaused", produces = "application/json;charset=UTF-8")
+	public long isPaused()
+	{
+		return Math.max(0, (myIsPaused - System.currentTimeMillis()) / 1000);
+	}
+
+	@GetMapping(path = "/enable")
+	public void enable()
+	{
+		myLogger.info("Enabling running again");
+		myIsPaused = -1;
 	}
 
 	private SuccessTask getTask(boolean theFireNotification)
