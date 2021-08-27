@@ -131,7 +131,7 @@ public class AnalysisManager
 		}
 		if (myChannel == null)
 		{
-			myChannel = ClarifaiChannel.INSTANCE.getInsecureGrpcChannel();
+			myChannel = ClarifaiChannel.INSTANCE.getGrpcChannel();
 		}
 
 		V2Grpc.V2BlockingStub aStub = V2Grpc.newBlockingStub(myChannel)
