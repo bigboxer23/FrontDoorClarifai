@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Component;
 
 import javax.activation.DataHandler;
 import javax.activation.FileDataSource;
@@ -39,7 +39,7 @@ import java.util.function.Consumer;
 /**
  * Various actions reside here.
  */
-@RestController
+@Component
 @EnableAutoConfiguration
 public class AnalysisManager
 {

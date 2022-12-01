@@ -1,10 +1,12 @@
 package com.bigboxer23.clarifai;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -43,10 +45,9 @@ public class AnalysisController
 
 	private long myIsPaused = -1;
 
-	@Autowired
-	public void setAnalysisManager(AnalysisManager theAnalysisManager)
+	public AnalysisController(AnalysisManager manager)
 	{
-		myAnalysisManager = theAnalysisManager;
+		myAnalysisManager = manager;
 	}
 
 	/**
@@ -55,8 +56,12 @@ public class AnalysisController
 	 * @param theFileToAnalyze
 	 * @throws InterruptedException
 	 */
-	@RequestMapping("/analyze")
-	public void analyzeImage(@RequestParam(value="file") String theFileToAnalyze) throws IOException
+	@GetMapping(path = "/analyze", produces = MediaType.APPLICATION_JSON_VALUE)
+	@Operation(summary = "Triggers analysis of a file passed as part of the url as a `file` parameter",
+			description = "Analyzes image found as part of the file parameter with clarifai's API.  If" +
+					" the image is determined to match the model, notification/email are sent.  The file" +
+					" is uploaded to S3 and removed from the local file system.")
+	public void analyzeImage(@Parameter(description = "Path to the local file motion saves.") @RequestParam(value="file") String theFileToAnalyze) throws IOException
 	{
 		if (myIsPaused > System.currentTimeMillis())
 		{
@@ -94,21 +99,28 @@ public class AnalysisController
 		myLogger.info("Done " + theFileToAnalyze);
 	}
 
-	@GetMapping(path = "/pause/{delay}", produces = "application/json;charset=UTF-8")
-	public long pause(@PathVariable(value = "delay") Long theDelay)
+	@PostMapping(path = "/pause/{delay}", produces = MediaType.APPLICATION_JSON_VALUE)
+	@Operation(summary = "Pauses the application",
+			description = "Passing in the number of seconds in the URL will cause the application to stop analyzing" +
+					"results until that number of seconds has passed.")
+	public long pause(@Parameter(description = "Number of seconds to pause analysis for.") @PathVariable(value = "delay") Long delay)
 	{
-		myIsPaused = System.currentTimeMillis() + theDelay * 1000;
-		myLogger.info("Pausing for " + theDelay + " seconds");
+		myIsPaused = System.currentTimeMillis() + delay * 1000;
+		myLogger.info("Pausing for " + delay + " seconds");
 		return isPaused();
 	}
 
-	@GetMapping(path = "/isPaused", produces = "application/json;charset=UTF-8")
+	@GetMapping(path = "/isPaused", produces = MediaType.APPLICATION_JSON_VALUE)
+	@Operation(summary = "Checks to see if the analysis has been paused",
+			description = "Returns either 0 (not paused0 or the number of seconds the application has been paused for")
 	public long isPaused()
 	{
 		return Math.max(0, (myIsPaused - System.currentTimeMillis()) / 1000);
 	}
 
-	@GetMapping(path = "/enable")
+	@PostMapping(path = "/enable", produces = MediaType.APPLICATION_JSON_VALUE)
+	@Operation(summary = "Enable the application, if paused",
+			description = "Re-enables analysis if application was paused")
 	public void enable()
 	{
 		myLogger.info("Enabling running again");
