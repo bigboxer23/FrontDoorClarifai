@@ -182,6 +182,7 @@ public class AnalysisManager
 		myLogger.info("Moving " + theFile + " to S3.");
 		if (myAmazonS3Client == null)
 		{
+			myLogger.info("creating new client");
 			myAmazonS3Client = AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
 		}
 		try

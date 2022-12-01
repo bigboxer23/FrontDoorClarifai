@@ -1,0 +1,12 @@
+server.port:8082
+APIKey=xxxxxxx
+modelId=People
+threshold=.75
+successThreshold=5
+notificationUrl=https://192.168.0.117/S/Notification
+notificationEmail=xxxx@gmail.com
+sendingEmailAccount=zzzz@gmail.com
+sendingEmailPassword=xxxxx
+s3BucketName=clarifai results bucket
+s3Region=us-east-1
+logbackserver=192.168.0.237:5671
