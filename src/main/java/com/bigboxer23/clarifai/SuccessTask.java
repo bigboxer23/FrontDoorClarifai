@@ -1,7 +1,9 @@
 package com.bigboxer23.clarifai;
 
 import java.io.File;
+import java.net.URL;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Task to run on getting a successful image from clarifai
@@ -34,7 +36,11 @@ public class SuccessTask implements Runnable
 		myAnalysisManager.sendGmail(myFiles);
 		myFiles.forEach(theFile ->
 		{
-			myAnalysisManager.moveToS3(theFile, "Success/");
+			Optional<URL> url = myAnalysisManager.moveToS3(theFile, "Success/");
+			if (myFiles.size() == 1)
+			{
+				myAnalysisManager.sendAfterStored(url);
+			}
 			myAnalysisManager.deleteFile(theFile);
 		});
 		myAnalysisController.clearBatchedFiles();

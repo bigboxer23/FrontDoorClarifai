@@ -4,6 +4,7 @@ modelId=People
 threshold=.75
 successThreshold=5
 notificationUrl=https://192.168.0.117/S/Notification
+afterStoredCallback=http://192.168.0.24:8081/previewContentFromUrl?url=%s
 notificationEmail=xxxx@gmail.com
 sendingEmailAccount=zzzz@gmail.com
 sendingEmailPassword=xxxxx

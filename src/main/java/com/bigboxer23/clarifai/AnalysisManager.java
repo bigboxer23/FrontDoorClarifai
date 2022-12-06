@@ -11,6 +11,7 @@ import com.clarifai.grpc.api.status.StatusCode;
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +29,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -58,6 +60,9 @@ public class AnalysisManager
 
 	@Value("${notificationUrl}")
 	private String myNotificationURL;
+
+	@Value("${afterStoredCallback}")
+	private String afterStoredCallback;
 
 	@Value("${s3BucketName}")
 	private String myS3BucketName;
@@ -177,7 +182,7 @@ public class AnalysisManager
 	 * @param theFile
 	 * @param theDirectory
 	 */
-	public void moveToS3(File theFile, String theDirectory)
+	public Optional<URL> moveToS3(File theFile, String theDirectory)
 	{
 		myLogger.info("Moving " + theFile + " to S3.");
 		if (myAmazonS3Client == null)
@@ -185,14 +190,17 @@ public class AnalysisManager
 			myLogger.info("creating new client");
 			myAmazonS3Client = AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
 		}
+		String key = theDirectory + getDateString() + theFile.getName();
 		try
 		{
-			myAmazonS3Client.putObject(new PutObjectRequest(myS3BucketName, theDirectory + getDateString() + theFile.getName(), theFile));
+			myAmazonS3Client.putObject(new PutObjectRequest(myS3BucketName, key, theFile));
+			return Optional.ofNullable(myAmazonS3Client.getUrl(myS3BucketName, key));
 		} catch (Exception e)
 		{
 			myLogger.error("Problem sending to S3", e);
 			myAmazonS3Client = null;
 		}
+		return Optional.empty();
 	}
 
 	/**
@@ -227,6 +235,16 @@ public class AnalysisManager
 		myLogger.info("Sending notification... ");
 		HttpClientUtils.execute(new HttpGet(myNotificationURL));
 		myLogger.info("Notification Sent ");
+	}
+
+	public void sendAfterStored(Optional<URL> url)
+	{
+		if (afterStoredCallback.equals("") || !url.isPresent())
+		{
+			myLogger.info("no after stored callback, returning");
+			return;
+		}
+		HttpClientUtils.execute(new HttpPost(String.format(afterStoredCallback, url.get())));
 	}
 
 	/**

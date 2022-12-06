@@ -21,6 +21,8 @@ APIKey: API key to query Clarifai's API with<br>
 modelId: the model id to use<br>
 threshold: threshhold from 0-1 meaning should notify/email<br>
 notificationUrl: URL to notify on success.  ex: http://192.168.0.7:8080/Notification <br>
+afterStoredCallback: URL to call when we've stored the file to s3, the URL will include the s3 link appended to the end
+ ex: http://192.168.0.24:8081/previewContentFromUrl?url=%s <br>
 renameDirectory: Where should we move the files from motion's temp directory<br>
 notificationEmail: the email to send the notification to<br>
 server.port: Port number for server to run on<br>
