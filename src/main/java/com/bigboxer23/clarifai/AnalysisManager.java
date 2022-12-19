@@ -3,15 +3,14 @@ package com.bigboxer23.clarifai;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.bigboxer23.util.http.HttpClientUtils;
+import com.bigboxer23.utils.http.OkHttpCallback;
+import com.bigboxer23.utils.http.OkHttpUtil;
 import com.clarifai.channel.ClarifaiChannel;
 import com.clarifai.credentials.ClarifaiCallCredentials;
 import com.clarifai.grpc.api.*;
 import com.clarifai.grpc.api.status.StatusCode;
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,6 +22,7 @@ import javax.activation.DataHandler;
 import javax.activation.FileDataSource;
 import javax.annotation.PostConstruct;
 import javax.mail.*;
+import javax.mail.Authenticator;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
@@ -233,7 +233,7 @@ public class AnalysisManager
 			return;
 		}
 		myLogger.info("Sending notification... ");
-		HttpClientUtils.execute(new HttpGet(myNotificationURL));
+		OkHttpUtil.get(myNotificationURL, new OkHttpCallback());
 		myLogger.info("Notification Sent ");
 	}
 
@@ -244,7 +244,7 @@ public class AnalysisManager
 			myLogger.info("no after stored callback, returning");
 			return;
 		}
-		HttpClientUtils.execute(new HttpPost(String.format(afterStoredCallback, url.get())));
+		OkHttpUtil.post(String.format(afterStoredCallback, url.get()), new OkHttpCallback());
 	}
 
 	/**
