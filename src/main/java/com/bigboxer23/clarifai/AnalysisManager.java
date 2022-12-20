@@ -3,6 +3,7 @@ package com.bigboxer23.clarifai;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.bigboxer23.utils.FilePersistentIndex;
 import com.bigboxer23.utils.http.OkHttpCallback;
 import com.bigboxer23.utils.http.OkHttpUtil;
 import com.clarifai.channel.ClarifaiChannel;
@@ -85,13 +86,13 @@ public class AnalysisManager
 
 	private Session myMailSession;
 
-	private AtomicInteger myMonthlyAPICount = new AtomicInteger(0);
+	private FilePersistentIndex monthlyAPICount = new FilePersistentIndex("api");
 
 	@Scheduled(cron="0 0 0 1 1/1 *")//Run first of month at 12am
 	private void resetMonthlyCounter()
 	{
 		myLogger.info("Resetting monthly API count");
-		myMonthlyAPICount.set(0);
+		monthlyAPICount.set(0);
 	}
 
 	private int getMaxApiLimitByDayOfMonth(int theDayOfMonth)
@@ -108,15 +109,7 @@ public class AnalysisManager
 	 */
 	private boolean shouldLimitCall()
 	{
-		return myMonthlyAPICount.get() > getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth());
-	}
-
-	@PostConstruct
-	private void initCounter()
-	{
-		int aMaxCount = getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth() - 1);
-		myMonthlyAPICount.set(aMaxCount);
-		myLogger.warn("Initializing to " + aMaxCount);
+		return monthlyAPICount.get() > getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth());
 	}
 
 	/**
@@ -131,7 +124,7 @@ public class AnalysisManager
 	{
 		if (shouldLimitCall())
 		{
-			myLogger.warn("Monthly Clarifai API limit has been hit " + myMonthlyAPICount.get());
+			myLogger.warn("Monthly Clarifai API limit has been hit " + monthlyAPICount.get());
 			return;
 		}
 		if (myChannel == null)
@@ -141,7 +134,7 @@ public class AnalysisManager
 
 		V2Grpc.V2BlockingStub aStub = V2Grpc.newBlockingStub(myChannel)
 				.withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
-		myMonthlyAPICount.incrementAndGet();
+		monthlyAPICount.increment();
 		MultiOutputResponse aResponse = aStub.postModelOutputs(
 				PostModelOutputsRequest.newBuilder()
 						.setModelId(myModelId)
@@ -281,7 +274,7 @@ public class AnalysisManager
 			Message aMessage = new MimeMessage(myMailSession);
 			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
 			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
-			aMessage.setSubject("Front Door Motion " + myMonthlyAPICount.intValue());
+			aMessage.setSubject("Front Door Motion " + monthlyAPICount.get());
 			List<MimeBodyPart> aFiles = new ArrayList<>();
 			for (File aFile : theFiles)
 			{

@@ -157,7 +157,7 @@
 		<dependency>
 			<groupId>com.bigboxer23</groupId>
 			<artifactId>utils</artifactId>
-			<version>1.4</version>
+			<version>1.5</version>
 		</dependency>
 	</dependencies>
 	<repositories>
