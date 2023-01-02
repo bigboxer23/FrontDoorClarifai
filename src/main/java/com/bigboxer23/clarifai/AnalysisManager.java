@@ -21,7 +21,6 @@ import org.springframework.stereotype.Component;
 
 import javax.activation.DataHandler;
 import javax.activation.FileDataSource;
-import javax.annotation.PostConstruct;
 import javax.mail.*;
 import javax.mail.Authenticator;
 import javax.mail.internet.InternetAddress;
@@ -36,7 +35,6 @@ import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -292,8 +290,12 @@ public class AnalysisManager
 		}
 	}
 
+	/**
+	 * @return yyyy/MM/ folder, for path sorting
+	 */
 	private String getDateString()
 	{
-		return new SimpleDateFormat("yyyy-MM").format(new Date()) + "/";
+		return new SimpleDateFormat("yyyy").format(new Date()) + "/" +
+				new SimpleDateFormat("MM").format(new Date()) + "/";
 	}
 }
