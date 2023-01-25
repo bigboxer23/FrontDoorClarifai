@@ -1,8 +1,8 @@
-## Computer Vision WebServer for DIY RPI Security Camera
+## Raspberry Pi AI security camera
 
-A (SpringBoot) webserver for querying clarifai's vision API to augment the capabilities available with the motion application
-Motion calls onMotion.sh which triggers a curl command to hit a servlet.  The servlet queries Clarifai's API,
-which returns an analysis of the image taken by the Raspberry Pi camera.  If it meets a particular threshold,
+A (SpringBoot) webserver for querying clarifai's vision API to augment the capabilities available with the motion application.
+Motion calls onMotion.sh which triggers a curl command to hit a servlet, which queries Clarifai's API,
+and returns an analysis of the image taken by the Raspberry Pi's camera.  If it meets a particular threshold,
 it will potentially notify a callback URL and send an email.
 
 After Clarifai analyzes the result, the image will either be declared success or a failure. On failure, the image will
