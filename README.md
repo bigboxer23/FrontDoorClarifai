@@ -12,22 +12,24 @@ url that there's detected motion.  Successful events can be batched so the first
 events can be combined for a multi-image event to prevent spamming.  the `successThreshold` property can define the minimum
 time between these events.
 
-###  Setting Properties:
+### Setting Properties:
+
 Properties can be defined by creating `src/main/java/resources/application.properties` and adding content. An example
 file (`application.properties.example`) exists in this directory which can be used as a starting point.<br>
-###  Available Properties:
+
+### Available Properties:
 
 APIKey: API key to query Clarifai's API with<br>
 modelId: the model id to use<br>
 threshold: threshhold from 0-1 meaning should notify/email<br>
 notificationUrl: URL to notify on success.  ex: http://192.168.0.7:8080/Notification <br>
 afterStoredCallback: URL to call when we've stored the file to s3, the URL will include the s3 link appended to the end
- ex: http://192.168.0.24:8081/previewContentFromUrl?url=%s <br>
+ex: http://192.168.0.24:8081/previewContentFromUrl?url=%s <br>
 renameDirectory: Where should we move the files from motion's temp directory<br>
 notificationEmail: the email to send the notification to<br>
 server.port: Port number for server to run on<br>
 successThreshold: Number of minutes until another success notification and/or email is sent.  This prevents spamming
-if there are a large number of clustered events.  At the end of this period if there are unsent successful events, 
+if there are a large number of clustered events.  At the end of this period if there are unsent successful events,
 they will be batched together in one email/notification<br>
 notificationEmail: Email address to send emails to on success<br>
 sendingEmailAccount: Email username to send emails from<br>
@@ -38,13 +40,14 @@ logbackserver: Optional IP/port for a logback server to get events. If not defin
 stdout or a file. Example: 192.168.0.7:5671<br>
 
 ### Installation
-To launch the server at start, edit your /etc/rc.local 
+
+To launch the server at start, edit your /etc/rc.local
 
 Make it looks similar to:
 
 _IP=$(hostname -I) || true
-if [ "$_IP" ]; then
-  printf "My IP address is %s\n" "$_IP"
+if [ "$_IP"]; then
+printf "My IP address is %s\n" "$_IP"
 fi
 cd /home/pi
 nohup java -jar /home/pi/Clarifai-1.0.jar

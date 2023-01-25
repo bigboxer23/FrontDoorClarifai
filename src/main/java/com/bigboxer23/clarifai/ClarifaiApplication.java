@@ -7,26 +7,25 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-/**
- *
- */
+/** */
 @SpringBootApplication
 @EnableScheduling
-@OpenAPIDefinition(info =
-@Info(title = "Clarifai front door camera", version = "1", description = "Provides ability to have clarifai service analyze" +
-		"content from motion service on raspberry pi and send notifications via email/webhook and store analyzed content in" +
-		"AWS S3 bucket",
-		contact = @Contact(name = "bigboxer23@gmail.com", url="https://github.com/bigboxer23/FrontDoorClarifai"))
-)
-public class ClarifaiApplication
-{
-	public static void main(String[] args)
-	{
+@OpenAPIDefinition(
+		info =
+				@Info(
+						title = "Clarifai front door camera",
+						version = "1",
+						description = "Provides ability to have clarifai service analyzecontent from"
+								+ " motion service on raspberry pi and send notifications via"
+								+ " email/webhook and store analyzed content inAWS S3 bucket",
+						contact =
+								@Contact(
+										name = "bigboxer23@gmail.com",
+										url = "https://github.com/bigboxer23/FrontDoorClarifai")))
+public class ClarifaiApplication {
+	public static void main(String[] args) {
 		SpringApplication.run(ClarifaiApplication.class, args);
 	}
 
-	public ClarifaiApplication()
-	{
-
-	}
+	public ClarifaiApplication() {}
 }

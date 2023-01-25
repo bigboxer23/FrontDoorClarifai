@@ -5,11 +5,8 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Task to run on getting a successful image from clarifai
- */
-public class SuccessTask implements Runnable
-{
+/** Task to run on getting a successful image from clarifai */
+public class SuccessTask implements Runnable {
 	private AnalysisManager myAnalysisManager;
 
 	private AnalysisController myAnalysisController;
@@ -18,8 +15,11 @@ public class SuccessTask implements Runnable
 
 	private List<File> myFiles;
 
-	public SuccessTask(List<File> theFiles, boolean theFireNotification, AnalysisManager theAnalysisManager, AnalysisController theController)
-	{
+	public SuccessTask(
+			List<File> theFiles,
+			boolean theFireNotification,
+			AnalysisManager theAnalysisManager,
+			AnalysisController theController) {
 		myAnalysisManager = theAnalysisManager;
 		myFiles = theFiles;
 		myAnalysisController = theController;
@@ -27,18 +27,14 @@ public class SuccessTask implements Runnable
 	}
 
 	@Override
-	public void run()
-	{
-		if (myFireNotification)
-		{
+	public void run() {
+		if (myFireNotification) {
 			myAnalysisManager.sendNotification();
 		}
 		myAnalysisManager.sendGmail(myFiles);
-		myFiles.forEach(theFile ->
-		{
+		myFiles.forEach(theFile -> {
 			Optional<URL> url = myAnalysisManager.moveToS3(theFile, "Success/");
-			if (myFiles.size() == 1)
-			{
+			if (myFiles.size() == 1) {
 				myAnalysisManager.sendAfterStored(url);
 			}
 			myAnalysisManager.deleteFile(theFile);

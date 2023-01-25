@@ -12,21 +12,6 @@ import com.clarifai.grpc.api.*;
 import com.clarifai.grpc.api.status.StatusCode;
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-
-import javax.activation.DataHandler;
-import javax.activation.FileDataSource;
-import javax.mail.*;
-import javax.mail.Authenticator;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -36,14 +21,25 @@ import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.function.Consumer;
+import javax.activation.DataHandler;
+import javax.activation.FileDataSource;
+import javax.mail.*;
+import javax.mail.Authenticator;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeBodyPart;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimeMultipart;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
 
-/**
- * Various actions reside here.
- */
+/** Various actions reside here. */
 @Component
 @EnableAutoConfiguration
-public class AnalysisManager
-{
+public class AnalysisManager {
 	private static final int kMaxApiLimit = 5000;
 
 	private static final Logger myLogger = LoggerFactory.getLogger(AnalysisController.class);
@@ -86,28 +82,28 @@ public class AnalysisManager
 
 	private FilePersistentIndex monthlyAPICount = new FilePersistentIndex("api");
 
-	@Scheduled(cron="0 0 0 1 1/1 *")//Run first of month at 12am
-	private void resetMonthlyCounter()
-	{
+	@Scheduled(cron = "0 0 0 1 1/1 *") // Run first of month at 12am
+	private void resetMonthlyCounter() {
 		myLogger.info("Resetting monthly API count");
 		monthlyAPICount.set(0);
 	}
 
-	private int getMaxApiLimitByDayOfMonth(int theDayOfMonth)
-	{
+	private int getMaxApiLimitByDayOfMonth(int theDayOfMonth) {
 		LocalDate aDate = LocalDate.now();
-		int aDayCount = aDate.withDayOfMonth(aDate.getMonth().length(aDate.isLeapYear())).getDayOfMonth();
+		int aDayCount = aDate.withDayOfMonth(aDate.getMonth().length(aDate.isLeapYear()))
+				.getDayOfMonth();
 		return theDayOfMonth * (kMaxApiLimit / aDayCount);
 	}
 
 	/**
-	 * Since we have a finite number of free calls, limit ourselves by available number based on number per day
+	 * Since we have a finite number of free calls, limit ourselves by available number based on
+	 * number per day
 	 *
 	 * @return true if we've hit limit and shouldn't allow running
 	 */
-	private boolean shouldLimitCall()
-	{
-		return monthlyAPICount.get() > getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth());
+	private boolean shouldLimitCall() {
+		return monthlyAPICount.get()
+				> getMaxApiLimitByDayOfMonth(LocalDate.now().getDayOfMonth());
 	}
 
 	/**
@@ -118,49 +114,43 @@ public class AnalysisManager
 	 * @param theFailure method to call if clarifai says the image is not noteworthy
 	 * @throws InterruptedException
 	 */
-	public void sendToClarifai(File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure) throws IOException
-	{
-		if (shouldLimitCall())
-		{
+	public void sendToClarifai(
+			File theFileToAnalyze, Consumer<? super File> theSuccess, Consumer<? super File> theFailure)
+			throws IOException {
+		if (shouldLimitCall()) {
 			myLogger.warn("Monthly Clarifai API limit has been hit " + monthlyAPICount.get());
 			return;
 		}
-		if (myChannel == null)
-		{
+		if (myChannel == null) {
 			myChannel = ClarifaiChannel.INSTANCE.getGrpcChannel();
 		}
 
-		V2Grpc.V2BlockingStub aStub = V2Grpc.newBlockingStub(myChannel)
-				.withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
+		V2Grpc.V2BlockingStub aStub =
+				V2Grpc.newBlockingStub(myChannel).withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
 		monthlyAPICount.increment();
-		MultiOutputResponse aResponse = aStub.postModelOutputs(
-				PostModelOutputsRequest.newBuilder()
-						.setModelId(myModelId)
-						.addInputs(
-								Input.newBuilder().setData(
-										Data.newBuilder().setImage(
-												Image.newBuilder()
-														.setBase64(ByteString.copyFrom(Files.readAllBytes(
-																theFileToAnalyze.toPath()
-														)))
-										)
-								)
-						)
-						.build()
-		);
+		MultiOutputResponse aResponse = aStub.postModelOutputs(PostModelOutputsRequest.newBuilder()
+				.setModelId(myModelId)
+				.addInputs(Input.newBuilder()
+						.setData(Data.newBuilder()
+								.setImage(Image.newBuilder()
+										.setBase64(
+												ByteString.copyFrom(Files.readAllBytes(theFileToAnalyze.toPath()))))))
+				.build());
 
 		if (aResponse.getStatus().getCode() != StatusCode.SUCCESS) {
 			throw new RuntimeException("Request failed, status: " + aResponse.getStatus());
 		}
 
 		for (Concept aConcept : aResponse.getOutputs(0).getData().getConceptsList()) {
-			myLogger.info("Clarifai analysis: " + theFileToAnalyze + " " + (new DecimalFormat("##.00").format(aConcept.getValue() * 100)) + "%");
-			if (aConcept.getValue() >= myThreshold)
-			{
+			myLogger.info("Clarifai analysis: "
+					+ theFileToAnalyze
+					+ " "
+					+ (new DecimalFormat("##.00").format(aConcept.getValue() * 100))
+					+ "%");
+			if (aConcept.getValue() >= myThreshold) {
 				myLogger.info("Clarifai success " + theFileToAnalyze.getName());
 				theSuccess.accept(theFileToAnalyze);
-			} else
-			{
+			} else {
 				myLogger.info("Clarifai failure " + theFileToAnalyze.getName());
 				theFailure.accept(theFileToAnalyze);
 			}
@@ -173,21 +163,18 @@ public class AnalysisManager
 	 * @param theFile
 	 * @param theDirectory
 	 */
-	public Optional<URL> moveToS3(File theFile, String theDirectory)
-	{
+	public Optional<URL> moveToS3(File theFile, String theDirectory) {
 		myLogger.info("Moving " + theFile + " to S3.");
-		if (myAmazonS3Client == null)
-		{
+		if (myAmazonS3Client == null) {
 			myLogger.info("creating new client");
-			myAmazonS3Client = AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
+			myAmazonS3Client =
+					AmazonS3ClientBuilder.standard().withRegion(myS3Region).build();
 		}
 		String key = theDirectory + getDateString() + theFile.getName();
-		try
-		{
+		try {
 			myAmazonS3Client.putObject(new PutObjectRequest(myS3BucketName, key, theFile));
 			return Optional.ofNullable(myAmazonS3Client.getUrl(myS3BucketName, key));
-		} catch (Exception e)
-		{
+		} catch (Exception e) {
 			myLogger.error("Problem sending to S3", e);
 			myAmazonS3Client = null;
 		}
@@ -199,14 +186,10 @@ public class AnalysisManager
 	 *
 	 * @param theFile
 	 */
-	public void deleteFile(File theFile)
-	{
-		try
-		{
+	public void deleteFile(File theFile) {
+		try {
 			Files.delete(theFile.toPath());
-		}
-		catch (IOException theE)
-		{
+		} catch (IOException theE) {
 			myLogger.error("deleteFile:", theE);
 		}
 	}
@@ -216,10 +199,8 @@ public class AnalysisManager
 	 *
 	 * @param theFileName
 	 */
-	public void sendNotification()
-	{
-		if (myNotificationURL == null)
-		{
+	public void sendNotification() {
+		if (myNotificationURL == null) {
 			myLogger.info("Notification null, not sending.");
 			return;
 		}
@@ -228,10 +209,8 @@ public class AnalysisManager
 		myLogger.info("Notification Sent ");
 	}
 
-	public void sendAfterStored(Optional<URL> url)
-	{
-		if (afterStoredCallback.equals("") || !url.isPresent())
-		{
+	public void sendAfterStored(Optional<URL> url) {
+		if (afterStoredCallback.equals("") || !url.isPresent()) {
 			myLogger.info("no after stored callback, returning");
 			return;
 		}
@@ -243,39 +222,32 @@ public class AnalysisManager
 	 *
 	 * @param theFiles
 	 */
-	public void sendGmail(List<File> theFiles)
-	{
-		if (mySendingEmailAccount == null || mySendingEmailPassword == null || myNotificationEmail == null)
-		{
+	public void sendGmail(List<File> theFiles) {
+		if (mySendingEmailAccount == null || mySendingEmailPassword == null || myNotificationEmail == null) {
 			myLogger.info("Not sending email, not configured");
 			return;
 		}
-		if (myMailSession == null)
-		{
+		if (myMailSession == null) {
 			Properties aProperties = new Properties();
 			aProperties.put("mail.smtp.auth", "true");
 			aProperties.put("mail.smtp.starttls.enable", "true");
 			aProperties.put("mail.smtp.host", "smtp.gmail.com");
 			aProperties.put("mail.smtp.port", "587");
-			myMailSession = Session.getInstance(aProperties, new Authenticator()
-			{
+			myMailSession = Session.getInstance(aProperties, new Authenticator() {
 				@Override
-				protected PasswordAuthentication getPasswordAuthentication()
-				{
+				protected PasswordAuthentication getPasswordAuthentication() {
 					return new PasswordAuthentication(mySendingEmailAccount, mySendingEmailPassword);
 				}
 			});
 		}
 		myLogger.info("Sending mail... " + theFiles.get(0));
-		try
-		{
+		try {
 			Message aMessage = new MimeMessage(myMailSession);
 			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
 			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
 			aMessage.setSubject("Front Door Motion " + monthlyAPICount.get());
 			List<MimeBodyPart> aFiles = new ArrayList<>();
-			for (File aFile : theFiles)
-			{
+			for (File aFile : theFiles) {
 				MimeBodyPart aMimeBodyPart = new MimeBodyPart();
 				aMimeBodyPart.setDataHandler(new DataHandler(new FileDataSource(aFile)));
 				aMimeBodyPart.setFileName(aFile.getName());
@@ -283,8 +255,7 @@ public class AnalysisManager
 			}
 			aMessage.setContent(new MimeMultipart(aFiles.toArray(new MimeBodyPart[0])));
 			Transport.send(aMessage);
-		} catch (MessagingException e)
-		{
+		} catch (MessagingException e) {
 			myLogger.error("sendGmail:", e);
 			myMailSession = null;
 		}
@@ -293,9 +264,10 @@ public class AnalysisManager
 	/**
 	 * @return yyyy/MM/ folder, for path sorting
 	 */
-	private String getDateString()
-	{
-		return new SimpleDateFormat("yyyy").format(new Date()) + "/" +
-				new SimpleDateFormat("MM").format(new Date()) + "/";
+	private String getDateString() {
+		return new SimpleDateFormat("yyyy").format(new Date())
+				+ "/"
+				+ new SimpleDateFormat("MM").format(new Date())
+				+ "/";
 	}
 }
