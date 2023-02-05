@@ -15,10 +15,13 @@ import io.grpc.Channel;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Consumer;
 import javax.activation.DataHandler;
@@ -214,7 +217,13 @@ public class AnalysisManager {
 			myLogger.info("no after stored callback, returning");
 			return;
 		}
-		OkHttpUtil.post(String.format(afterStoredCallback, url.get()), new OkHttpCallback());
+		String urlString = url.get().toString();
+		String bucketURL = myS3BucketName + ".s3.amazonaws.com/";
+		urlString = urlString.substring(urlString.indexOf(bucketURL) + bucketURL.length());
+		URL preSignedUrl = myAmazonS3Client.generatePresignedUrl(
+				myS3BucketName, urlString, Date.from(Instant.now().plus(5, ChronoUnit.MINUTES)));
+		OkHttpUtil.post(
+				String.format(afterStoredCallback, URLEncoder.encode(preSignedUrl.toString())), new OkHttpCallback());
 	}
 
 	/**
