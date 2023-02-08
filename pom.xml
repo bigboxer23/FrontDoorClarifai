@@ -91,8 +91,12 @@
       <name>mavenCentral</name>
       <url>https://repo1.maven.org/maven2</url>
     </repository>
+    <repository>
+      <id>github</id>
+      <name>GitHub bigboxer23 Maven Packages</name>
+      <url>https://maven.pkg.github.com/bigboxer23/_</url>
+    </repository>
   </repositories>
-
   <build>
     <plugins>
       <plugin>
