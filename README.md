@@ -1,3 +1,5 @@
+[![CodeQL](https://github.com/bigboxer23/FrontDoorClarifai/actions/workflows/codeql.yml/badge.svg)](https://github.com/bigboxer23/FrontDoorClarifai/actions/workflows/codeql.yml)
+
 ## Raspberry Pi AI security camera
 
 A (SpringBoot) webserver for querying clarifai's vision API to augment the capabilities available with the motion application.
