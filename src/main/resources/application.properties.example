@@ -11,3 +11,4 @@ sendingEmailPassword=xxxxx
 s3BucketName=clarifai results bucket
 s3Region=us-east-1
 logbackserver=192.168.0.237:5671
+basepath=/var/lib/motion/
