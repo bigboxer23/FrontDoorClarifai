@@ -30,6 +30,10 @@ public class AnalysisController {
 
 	private ScheduledExecutorService myExecutorService = Executors.newSingleThreadScheduledExecutor();
 
+	// Don't allow reading files from anywhere on disk
+	@Value("${basepath}")
+	private String baseAnalysisPath;
+
 	/**
 	 * After a successful call, time until we'd immediately send another notification, otherwise
 	 * we'll start collecting images to batch into a single notification
@@ -45,11 +49,24 @@ public class AnalysisController {
 		myAnalysisManager = manager;
 	}
 
+	private String sanitizeFileInput(String fileInput) {
+		if (fileInput.split("\\.").length > 2) {
+			String start = fileInput.substring(0, fileInput.lastIndexOf(".")).replace(".", "");
+			String end = fileInput.substring(fileInput.lastIndexOf(".")).replace(".", "");
+			fileInput = start + "." + end;
+		}
+		if (!fileInput.startsWith(baseAnalysisPath)) {
+			fileInput = baseAnalysisPath + fileInput;
+		}
+		myLogger.info("sanitized " + fileInput);
+		return fileInput;
+	}
+
 	/**
 	 * Parse the file out of the request URL, send to clarifai to determine what we should do with
 	 * them
 	 *
-	 * @param theFileToAnalyze
+	 * @param filePathToAnalyze
 	 * @throws InterruptedException
 	 */
 	@GetMapping(path = "/analyze", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -61,20 +78,21 @@ public class AnalysisController {
 					+ " system.")
 	public void analyzeImage(
 			@Parameter(description = "Path to the local file motion saves.") @RequestParam(value = "file")
-					String theFileToAnalyze)
+					String filePathToAnalyze)
 			throws IOException {
 		if (myIsPaused > System.currentTimeMillis()) {
-			myLogger.info("Paused, not running" + theFileToAnalyze);
+			myLogger.info("Paused, not running" + filePathToAnalyze);
 			return;
 		}
-		myLogger.info("Starting " + theFileToAnalyze);
-		File aFileToAnalyze = new File(theFileToAnalyze);
-		if (!aFileToAnalyze.exists()) {
-			myLogger.error(theFileToAnalyze + " does not exist.");
+		myLogger.info("Starting " + filePathToAnalyze);
+		filePathToAnalyze = sanitizeFileInput(filePathToAnalyze);
+		File fileToAnalyze = new File(filePathToAnalyze);
+		if (!fileToAnalyze.exists()) {
+			myLogger.error(filePathToAnalyze + " does not exist.");
 			return;
 		}
 		myAnalysisManager.sendToClarifai(
-				aFileToAnalyze,
+				fileToAnalyze,
 				theSuccessFile -> {
 					myBatchedFiles.add(theSuccessFile);
 					if (myLastSuccessfulCall + (mySuccessThreshhold * 60 * 1000) < System.currentTimeMillis()) {
@@ -93,7 +111,7 @@ public class AnalysisController {
 					myAnalysisManager.moveToS3(theFailureFile, "Failure/");
 					myAnalysisManager.deleteFile(theFailureFile);
 				});
-		myLogger.info("Done " + theFileToAnalyze);
+		myLogger.info("Done " + filePathToAnalyze);
 	}
 
 	@PostMapping(path = "/pause/{delay}", produces = MediaType.APPLICATION_JSON_VALUE)

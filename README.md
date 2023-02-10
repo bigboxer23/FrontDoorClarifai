@@ -40,6 +40,7 @@ s3BucketName: Name of S3 bucket to upload success or failure images to<br>
 s3Region: Region of bucket<br>
 logbackserver: Optional IP/port for a logback server to get events. If not defined, modify `logback.xml` to log to
 stdout or a file. Example: 192.168.0.7:5671<br>
+basepath: path prefix to append to calls to /analyze.  Example: /var/lib/motion/
 
 ### Installation
 
