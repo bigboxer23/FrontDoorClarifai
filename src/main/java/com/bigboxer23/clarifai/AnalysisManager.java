@@ -68,8 +68,14 @@ public class AnalysisManager {
 	@Value("${s3Region}")
 	private String myS3Region;
 
-	@Value("${APIKey}")
-	private String myClarifaiAPIKey;
+	@Value("${ClarifaiPAT}")
+	private String clarifaiPAT;
+
+	@Value("${ClarifaiAppId}")
+	private String clarifaiAppId;
+
+	@Value("${ClarifaiUserId}")
+	private String clarifaiUserId;
 
 	@Value("${modelId}")
 	private String myModelId;
@@ -129,10 +135,12 @@ public class AnalysisManager {
 		}
 
 		V2Grpc.V2BlockingStub aStub =
-				V2Grpc.newBlockingStub(myChannel).withCallCredentials(new ClarifaiCallCredentials(myClarifaiAPIKey));
+				V2Grpc.newBlockingStub(myChannel).withCallCredentials(new ClarifaiCallCredentials(clarifaiPAT));
 		monthlyAPICount.increment();
 		MultiOutputResponse aResponse = aStub.postModelOutputs(PostModelOutputsRequest.newBuilder()
 				.setModelId(myModelId)
+				.setUserAppId(
+						UserAppIDSet.newBuilder().setUserId(clarifaiUserId).setAppId(clarifaiAppId))
 				.addInputs(Input.newBuilder()
 						.setData(Data.newBuilder()
 								.setImage(Image.newBuilder()

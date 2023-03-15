@@ -21,7 +21,9 @@ file (`application.properties.example`) exists in this directory which can be us
 
 ### Available Properties:
 
-APIKey: API key to query Clarifai's API with<br>
+ClarifaiPAT: Personal Access Token to query Clarifai's API with (see https://docs.clarifai.com/clarifai-basics/authentication/personal-access-tokens)<br>
+ClarifaiAppId: The app's ID<br>
+ClarifaiUserId: The user's ID<br>
 modelId: the model id to use<br>
 threshold: threshhold from 0-1 meaning should notify/email<br>
 notificationUrl: URL to notify on success.  ex: http://192.168.0.7:8080/Notification <br>

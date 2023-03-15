@@ -1,5 +1,7 @@
 server.port:8082
-APIKey=xxxxxxx
+ClarifaiPAT=xxxxxx
+ClarifaiAppId=xxxxxxx
+ClarifaiUserId=xxxxxx
 modelId=People
 threshold=.75
 successThreshold=5
