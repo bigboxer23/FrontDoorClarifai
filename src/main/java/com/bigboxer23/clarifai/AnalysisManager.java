@@ -3,7 +3,7 @@ package com.bigboxer23.clarifai;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.bigboxer23.utils.FilePersistentIndex;
+import com.bigboxer23.utils.file.FilePersistentIndex;
 import com.bigboxer23.utils.http.OkHttpCallback;
 import com.bigboxer23.utils.http.OkHttpUtil;
 import com.clarifai.channel.ClarifaiChannel;
