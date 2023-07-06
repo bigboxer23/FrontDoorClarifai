@@ -34,7 +34,7 @@ public class SuccessTask implements Runnable {
 		myAnalysisManager.sendGmail(myFiles);
 		myFiles.forEach(theFile -> {
 			Optional<URL> url = myAnalysisManager.moveToS3(theFile, "Success/");
-			if (myFiles.size() == 1) {
+			if (myFireNotification && myFiles.size() == 1) {
 				myAnalysisManager.sendAfterStored(url);
 			}
 			myAnalysisManager.deleteFile(theFile);
