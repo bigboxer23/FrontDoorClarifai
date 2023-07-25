@@ -46,14 +46,4 @@ basepath: path prefix to append to calls to /analyze.  Example: /var/lib/motion/
 
 ### Installation
 
-To launch the server at start, edit your /etc/rc.local
-
-Make it looks similar to:
-
-_IP=$(hostname -I) || true
-if [ "$_IP"]; then
-printf "My IP address is %s\n" "$_IP"
-fi
-cd /home/pi
-nohup java -jar /home/pi/Clarifai-1.0.jar
-exit 0
+Edit and run the `scripts/install.sh`.  It will create a service definition which will launch the app automatically
