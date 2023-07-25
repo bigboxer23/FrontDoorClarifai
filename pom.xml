@@ -86,7 +86,7 @@
     <dependency>
       <groupId>com.bigboxer23</groupId>
       <artifactId>utils</artifactId>
-      <version>2.0.13</version>
+      <version>2.0.15</version>
     </dependency>
   </dependencies>
   <repositories>
@@ -141,8 +141,7 @@
             <configuration>
               <target>
                 <scp file="${project.basedir}/target/Clarifai-1.0.jar" keyfile="${user.home}/.ssh/id_rsa" passphrase="" todir="pi@frontdoor3:/home/pi/com/jones/matt/Clarifai/1.0" trust="true"/>
-                <sshexec command="sudo pkill -f 'java.*Clarifai*'" host="frontdoor3" keyfile="${user.home}/.ssh/id_rsa" trust="true" username="pi"/>
-                <sshexec command="cd /home/pi/ ; nohup sudo nohup java -Xmx1024m -jar /home/pi/com/jones/matt/Clarifai/1.0/Clarifai-1.0.jar &amp;" host="frontdoor3" keyfile="${user.home}/.ssh/id_rsa" trust="true" username="pi"/>
+                <sshexec command="sudo systemctl restart clarifai.service" host="frontdoor3" keyfile="${user.home}/.ssh/id_rsa" trust="true" username="pi"/>
               </target>
             </configuration>
           </execution>
