@@ -140,7 +140,7 @@
             <phase>package</phase>
             <configuration>
               <target>
-                <scp file="${project.basedir}/target/Clarifai-1.0.jar" keyfile="${user.home}/.ssh/id_rsa" passphrase="" todir="pi@frontdoor3:/home/pi/com/jones/matt/Clarifai/1.0" trust="true"/>
+                <scp file="${project.basedir}/target/Clarifai-1.0.jar" keyfile="${user.home}/.ssh/id_rsa" passphrase="" todir="pi@frontdoor3:/home/pi/" trust="true"/>
                 <sshexec command="sudo systemctl restart clarifai.service" host="frontdoor3" keyfile="${user.home}/.ssh/id_rsa" trust="true" username="pi"/>
               </target>
             </configuration>

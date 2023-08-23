@@ -3,7 +3,7 @@ Description=start clarifai server on boot
 After=multi-user.target
 [Service]
 WorkingDirectory=/home/pi/
-ExecStart=java -jar /home/pi/com/jones/matt/Clarifai/1.0/Clarifai-1.0.jar
+ExecStart=java -jar /home/pi/Clarifai-1.0.jar
 User=root
 [Install]
 WantedBy=multi-user.target
