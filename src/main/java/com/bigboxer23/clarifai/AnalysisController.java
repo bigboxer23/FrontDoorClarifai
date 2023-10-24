@@ -131,7 +131,7 @@ public class AnalysisController {
 	@Operation(
 			summary = "Checks to see if the analysis has been paused",
 			description =
-					"Returns either 0 (not paused0 or the number of seconds the application has" + " been paused for")
+					"Returns either 0 (not paused or the number of seconds the application has" + " been paused for")
 	public long isPaused() {
 		return Math.max(0, (myIsPaused - System.currentTimeMillis()) / 1000);
 	}
