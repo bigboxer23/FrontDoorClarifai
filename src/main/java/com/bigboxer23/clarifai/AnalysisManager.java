@@ -6,6 +6,7 @@ import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.bigboxer23.utils.file.FilePersistentIndex;
 import com.bigboxer23.utils.http.OkHttpCallback;
 import com.bigboxer23.utils.http.OkHttpUtil;
+import com.bigboxer23.utils.mail.MailSender;
 import com.clarifai.channel.ClarifaiChannel;
 import com.clarifai.credentials.ClarifaiCallCredentials;
 import com.clarifai.grpc.api.*;
@@ -24,14 +25,6 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Consumer;
-import javax.activation.DataHandler;
-import javax.activation.FileDataSource;
-import javax.mail.*;
-import javax.mail.Authenticator;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -86,8 +79,6 @@ public class AnalysisManager {
 	private AmazonS3 myAmazonS3Client;
 
 	private Channel myChannel;
-
-	private Session myMailSession;
 
 	private FilePersistentIndex monthlyAPICount = new FilePersistentIndex("api");
 
@@ -240,42 +231,14 @@ public class AnalysisManager {
 	 * @param theFiles
 	 */
 	public void sendGmail(List<File> theFiles) {
-		if (mySendingEmailAccount == null || mySendingEmailPassword == null || myNotificationEmail == null) {
-			myLogger.info("Not sending email, not configured");
-			return;
-		}
-		if (myMailSession == null) {
-			Properties aProperties = new Properties();
-			aProperties.put("mail.smtp.auth", "true");
-			aProperties.put("mail.smtp.starttls.enable", "true");
-			aProperties.put("mail.smtp.host", "smtp.gmail.com");
-			aProperties.put("mail.smtp.port", "587");
-			myMailSession = Session.getInstance(aProperties, new Authenticator() {
-				@Override
-				protected PasswordAuthentication getPasswordAuthentication() {
-					return new PasswordAuthentication(mySendingEmailAccount, mySendingEmailPassword);
-				}
-			});
-		}
 		myLogger.info("Sending mail... " + theFiles.get(0));
-		try {
-			Message aMessage = new MimeMessage(myMailSession);
-			aMessage.setFrom(new InternetAddress(mySendingEmailAccount));
-			aMessage.setRecipients(Message.RecipientType.TO, InternetAddress.parse(myNotificationEmail));
-			aMessage.setSubject("Front Door Motion " + monthlyAPICount.get());
-			List<MimeBodyPart> aFiles = new ArrayList<>();
-			for (File aFile : theFiles) {
-				MimeBodyPart aMimeBodyPart = new MimeBodyPart();
-				aMimeBodyPart.setDataHandler(new DataHandler(new FileDataSource(aFile)));
-				aMimeBodyPart.setFileName(aFile.getName());
-				aFiles.add(aMimeBodyPart);
-			}
-			aMessage.setContent(new MimeMultipart(aFiles.toArray(new MimeBodyPart[0])));
-			Transport.send(aMessage);
-		} catch (MessagingException e) {
-			myLogger.error("sendGmail:", e);
-			myMailSession = null;
-		}
+		MailSender.sendGmail(
+				myNotificationEmail,
+				mySendingEmailAccount,
+				mySendingEmailPassword,
+				"Front Door Motion " + monthlyAPICount.get(),
+				null,
+				theFiles);
 	}
 
 	/**
