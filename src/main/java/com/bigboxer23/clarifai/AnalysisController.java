@@ -55,7 +55,7 @@ public class AnalysisController {
 			String end = fileInput.substring(fileInput.lastIndexOf(".")).replace(".", "");
 			fileInput = start + "." + end;
 		}
-		if (!fileInput.startsWith(baseAnalysisPath)) {
+		if (baseAnalysisPath != null && !fileInput.startsWith(baseAnalysisPath)) {
 			fileInput = baseAnalysisPath + fileInput;
 		}
 		myLogger.info("sanitized " + fileInput);
