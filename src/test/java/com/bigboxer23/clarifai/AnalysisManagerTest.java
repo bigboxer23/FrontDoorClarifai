@@ -96,8 +96,7 @@ class AnalysisManagerTest {
 				.setStatus(Status.newBuilder().setCode(StatusCode.FAILURE))
 				.build();
 
-		when(clarifaiStub.postModelOutputs(any(PostModelOutputsRequest.class)))
-				.thenReturn(mockResponse);
+		when(clarifaiStub.postModelOutputs(any(PostModelOutputsRequest.class))).thenReturn(mockResponse);
 
 		Consumer<File> successConsumer = mock(Consumer.class);
 		Consumer<File> failureConsumer = mock(Consumer.class);
@@ -111,5 +110,4 @@ class AnalysisManagerTest {
 
 		testFile.delete();
 	}
-
 }
