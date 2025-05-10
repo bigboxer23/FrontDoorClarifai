@@ -218,6 +218,9 @@ public class AnalysisManager {
 	 * @param theFiles
 	 */
 	public void sendGmail(List<File> theFiles) {
+		if (theFiles == null || theFiles.isEmpty()) {
+			return;
+		}
 		logger.info("Sending mail... " + theFiles.get(0));
 		MailSender.sendGmail(
 				myNotificationEmail,
