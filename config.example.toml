@@ -1,0 +1,44 @@
+# Copied to /etc/frontdoor/config.toml by deploy/install.sh. Everything is optional; defaults are shown.
+
+capture_dir = "/var/lib/frontdoor"
+# pause/enable HTTP API: POST /pause/{seconds}, POST /enable, GET /isPaused
+control_port = 8082
+# logstash = "192.168.0.7:5671"
+
+[camera]
+# 16:9 matches Camera Module 3. Use 4:3 sizes like [1640, 1232] and [320, 240] for v1/v2.
+still_size = [1920, 1080]
+lores_size = [320, 180]
+frame_rate = 10
+hflip = false
+vflip = false
+# strftime format stamped in the bottom right of captured stills. Empty to disable.
+timestamp_format = "%Y-%m-%d %H:%M:%S"
+
+[motion]
+# Black areas are ignored, white areas are watched, any size with the same aspect ratio as the camera.
+# mask_path = "/etc/frontdoor/mask.pgm"
+pixel_threshold = 25
+min_changed_fraction = 0.005
+min_frames = 5
+capture_interval_seconds = 5
+
+[detection]
+model_path = "/opt/frontdoor/models/yolo11n.onnx"
+threshold = 0.5
+threads = 4
+
+[notify]
+batch_minutes = 5
+# notification_url = "http://192.168.0.7:8080/Notification"
+# after_stored_callback = "http://192.168.0.24:8081/previewContentFromUrl?url=%s"
+
+[email]
+# to = "you@example.com"
+# account = "sender@gmail.com"
+# password = "gmail app password"
+
+[s3]
+# Credentials come from /etc/frontdoor/aws-credentials (standard AWS credentials file format).
+# bucket = "my-bucket"
+# region = "us-east-1"

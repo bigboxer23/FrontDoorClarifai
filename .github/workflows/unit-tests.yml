@@ -10,29 +10,18 @@ jobs:
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Set up Java
-      uses: actions/setup-java@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        distribution: 'temurin'
-        java-version: '17'
-    - name: Configure Maven for GitHub Packages
-      run: |
-        mkdir -p ~/.m2
-        cat > ~/.m2/settings.xml <<EOF
-        <settings>
-          <servers>
-            <server>
-              <id>github</id>
-              <username>${{ github.actor }}</username>
-              <password>${{ secrets.GITHUB_TOKEN }}</password>
-            </server>
-          </servers>
-        </settings>
-        EOF
+        python-version: '3.13'
+
+    - name: Install
+      run: pip install -e '.[dev]'
+
     - name: Run Unit Tests
-      run: mvn -B clean test --fail-at-end
+      run: pytest
