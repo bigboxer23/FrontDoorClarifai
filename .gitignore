@@ -1,0 +1,12 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.venv*/
+build/
+models/
+config.toml
+local/
+.idea/
+target/
+.index_api
+.DS_Store

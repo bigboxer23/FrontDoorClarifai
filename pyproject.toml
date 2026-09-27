@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "frontdoor"
+version = "2.0.0"
+description = "Raspberry Pi front door camera with on-device person detection"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+# picamera2 isn't listed: it comes from apt on the Pi (python3-picamera2), see deploy/install.sh.
+dependencies = [
+    "boto3",
+    "numpy",
+    "onnxruntime",
+    "pillow",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+frontdoor = "frontdoor.cli:main"
+
+[tool.setuptools]
+packages = ["frontdoor"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120

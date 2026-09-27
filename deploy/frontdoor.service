@@ -1,0 +1,17 @@
+[Unit]
+Description=Front door camera person detection
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=frontdoor
+Group=frontdoor
+SupplementaryGroups=video
+ExecStart=/opt/frontdoor/venv/bin/frontdoor --config /etc/frontdoor/config.toml run
+Environment=AWS_SHARED_CREDENTIALS_FILE=/etc/frontdoor/aws-credentials
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
