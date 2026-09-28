@@ -30,6 +30,8 @@ threads = 4
 
 [notify]
 batch_minutes = 5
+# Successes this many seconds after an immediate email are stored in S3 without emailing.
+quiet_seconds = 60
 # notification_url = "http://192.168.0.7:8080/Notification"
 # after_stored_callback = "http://192.168.0.24:8081/previewContentFromUrl?url=%s"
 

@@ -60,7 +60,9 @@ def setup():
         timers.append(FakeTimer(seconds, callback))
         return timers[-1]
 
-    pipeline = Pipeline(detector, actions, 0.5, batch_minutes=5, clock=clock, timer_factory=timer_factory)
+    pipeline = Pipeline(
+        detector, actions, 0.5, batch_minutes=5, quiet_seconds=60, clock=clock, timer_factory=timer_factory
+    )
 
     def analyze(name, score):
         detector.scores[name] = score
@@ -92,7 +94,7 @@ def test_successes_within_window_are_batched(setup):
     analyze("a.jpg", 0.9)
     actions.calls.clear()
 
-    clock.now += 60
+    clock.now += 90
     analyze("b.jpg", 0.9)
     clock.now += 60
     analyze("c.jpg", 0.8)
@@ -120,7 +122,7 @@ def test_success_after_quiet_window_notifies_again(setup):
 def test_flush_sends_pending_batch(setup):
     pipeline, analyze, actions, clock, timers = setup
     analyze("a.jpg", 0.9)
-    clock.now += 10
+    clock.now += 90
     analyze("b.jpg", 0.9)
     actions.calls.clear()
     pipeline.flush()
@@ -128,3 +130,46 @@ def test_flush_sends_pending_batch(setup):
     assert actions.calls == [("email", ["b.jpg"]), ("store", "b.jpg", "Success")]
     pipeline.flush()
     assert len(actions.calls) == 2
+
+
+def test_success_in_quiet_window_is_stored_without_email(setup):
+    _, analyze, actions, clock, timers = setup
+    analyze("a.jpg", 0.9)
+    actions.calls.clear()
+    clock.now += 59
+    analyze("b.jpg", 0.9)
+    assert actions.calls == [("store", "b.jpg", "Success")]
+    assert timers == []
+
+
+def test_failure_in_quiet_window_still_stored_as_failure(setup):
+    _, analyze, actions, clock, _ = setup
+    analyze("a.jpg", 0.9)
+    actions.calls.clear()
+    clock.now += 5
+    analyze("b.jpg", 0.1)
+    assert actions.calls == [("store", "b.jpg", "Failure")]
+
+
+def test_quiet_window_successes_do_not_delay_next_immediate_email(setup):
+    _, analyze, actions, clock, _ = setup
+    analyze("a.jpg", 0.9)
+    clock.now += 50
+    analyze("b.jpg", 0.9)  # quiet, not counted as activity
+    clock.now += 260  # 310s after a.jpg, only 260s after b.jpg
+    actions.calls.clear()
+    analyze("c.jpg", 0.9)
+    assert actions.calls[0] == ("notify",)
+
+
+def test_real_visit_sends_one_email(setup):
+    """17:43:27 success, 17:43:32 success, 17:43:37 failure from the Pi's log: previously two emails."""
+    _, analyze, actions, clock, timers = setup
+    analyze("174327.jpg", 0.82)
+    clock.now += 5
+    analyze("174332.jpg", 0.63)
+    clock.now += 5
+    analyze("174337.jpg", 0.02)
+    assert [c for c in actions.calls if c[0] == "email"] == [("email", ["174327.jpg"])]
+    assert ("store", "174332.jpg", "Success") in actions.calls
+    assert timers == []

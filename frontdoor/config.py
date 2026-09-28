@@ -47,6 +47,8 @@ class DetectionConfig:
 class NotifyConfig:
     # After a success, further successes within this many minutes are batched into one email.
     batch_minutes: float = 5
+    # Successes this many seconds after an immediate email are stored in S3 without emailing.
+    quiet_seconds: float = 60
     # GET on the first success of a batch.
     notification_url: str | None = None
     # POSTed after a lone success is stored in S3. %s is replaced with a presigned URL to the image.

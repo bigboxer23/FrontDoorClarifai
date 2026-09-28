@@ -30,6 +30,7 @@ def build_pipeline(config: Config) -> Pipeline:
         Actions(config),
         config.detection.threshold,
         config.notify.batch_minutes,
+        config.notify.quiet_seconds,
     )
 
 

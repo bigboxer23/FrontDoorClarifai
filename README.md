@@ -12,8 +12,10 @@ discontinued) vision API.
 4. At or above `threshold` it's a success, otherwise a failure. Failures are uploaded to S3 under
    `Failure/YYYY/MM/`. Successes go to `Success/YYYY/MM/`, are emailed, and hit the notification webhook.
 
-Successes are batched to prevent spamming: the first one after a quiet period notifies right away, and any further
-successes within `batch_minutes` of the previous one are collected and emailed together once things go quiet.
+Successes are batched to prevent spamming: the first one after `batch_minutes` without a success notifies and emails
+right away. Successes in the next `quiet_seconds` (60) are usually the same visitor, so they're uploaded to S3 without
+an email. After that, successes within `batch_minutes` of the previous one are collected and emailed together once
+`batch_minutes` pass without another.
 When a success is sent on its own, `after_stored_callback` also gets a 5 minute presigned S3 link to the image.
 
 ### Requirements
